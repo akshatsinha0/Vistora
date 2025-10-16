@@ -1,0 +1,113 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Vistora Database Stack - RDS PostgreSQL'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: production
+    Description: Environment name prefix
+
+  DatabaseSubnet1Id:
+    Type: String
+    Description: Database Subnet 1 ID
+
+  DatabaseSubnet2Id:
+    Type: String
+    Description: Database Subnet 2 ID
+
+  RDSSecurityGroupId:
+    Type: String
+    Description: RDS Security Group ID
+
+  DBInstanceClass:
+    Type: String
+    Default: db.t3.micro
+    Description: Database instance class
+
+  DBAllocatedStorage:
+    Type: Number
+    Default: 20
+    Description: Allocated storage in GB
+
+  DBName:
+    Type: String
+    Default: vistora
+    Description: Database name
+
+  DBUsername:
+    Type: String
+    Default: vistora_admin
+    Description: Database master username
+    NoEcho: true
+
+  DBPassword:
+    Type: String
+    NoEcho: true
+    Description: Database master password
+    MinLength: 8
+    MaxLength: 41
+
+Resources:
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupName: !Sub ${EnvironmentName}-db-subnet-group
+      DBSubnetGroupDescription: Subnet group for RDS PostgreSQL
+      SubnetIds:
+        - !Ref DatabaseSubnet1Id
+        - !Ref DatabaseSubnet2Id
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-db-subnet-group
+        - Key: Project
+          Value: Vistora
+
+  DBInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Sub ${EnvironmentName}-postgres
+      DBName: !Ref DBName
+      Engine: postgres
+      EngineVersion: '14.10'
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: !Ref DBAllocatedStorage
+      StorageType: gp2
+      StorageEncrypted: true
+      MasterUsername: !Ref DBUsername
+      MasterUserPassword: !Ref DBPassword
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroupId
+      MultiAZ: false
+      PubliclyAccessible: false
+      BackupRetentionPeriod: 7
+      PreferredBackupWindow: '03:00-04:00'
+      PreferredMaintenanceWindow: 'sun:04:00-sun:05:00'
+      EnableCloudwatchLogsExports:
+        - postgresql
+      DeletionProtection: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-postgres
+        - Key: Project
+          Value: Vistora
+
+Outputs:
+  DBInstanceEndpoint:
+    Description: RDS Instance Endpoint
+    Value: !GetAtt DBInstance.Endpoint.Address
+    Export:
+      Name: !Sub ${EnvironmentName}-DBInstanceEndpoint
+
+  DBInstancePort:
+    Description: RDS Instance Port
+    Value: !GetAtt DBInstance.Endpoint.Port
+    Export:
+      Name: !Sub ${EnvironmentName}-DBInstancePort
+
+  DBName:
+    Description: Database Name
+    Value: !Ref DBName
+    Export:
+      Name: !Sub ${EnvironmentName}-DBName

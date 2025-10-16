@@ -1,0 +1,76 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Vistora Cache Stack - ElastiCache Redis'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: production
+    Description: Environment name prefix
+
+  DatabaseSubnet1Id:
+    Type: String
+    Description: Database Subnet 1 ID
+
+  DatabaseSubnet2Id:
+    Type: String
+    Description: Database Subnet 2 ID
+
+  RedisSecurityGroupId:
+    Type: String
+    Description: Redis Security Group ID
+
+  CacheNodeType:
+    Type: String
+    Default: cache.t3.micro
+    Description: Cache node type
+
+Resources:
+  CacheSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      CacheSubnetGroupName: !Sub ${EnvironmentName}-cache-subnet-group
+      Description: Subnet group for ElastiCache Redis
+      SubnetIds:
+        - !Ref DatabaseSubnet1Id
+        - !Ref DatabaseSubnet2Id
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-cache-subnet-group
+        - Key: Project
+          Value: Vistora
+
+  RedisCluster:
+    Type: AWS::ElastiCache::CacheCluster
+    Properties:
+      CacheClusterId: !Sub ${EnvironmentName}-redis
+      Engine: redis
+      EngineVersion: '7.0'
+      CacheNodeType: !Ref CacheNodeType
+      NumCacheNodes: 1
+      Port: 6379
+      CacheSubnetGroupName: !Ref CacheSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref RedisSecurityGroupId
+      PreferredMaintenanceWindow: 'sun:05:00-sun:06:00'
+      SnapshotRetentionLimit: 5
+      SnapshotWindow: '03:00-05:00'
+      TransitEncryptionEnabled: false
+      AtRestEncryptionEnabled: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-redis
+        - Key: Project
+          Value: Vistora
+
+Outputs:
+  RedisEndpoint:
+    Description: Redis Cluster Endpoint
+    Value: !GetAtt RedisCluster.RedisEndpoint.Address
+    Export:
+      Name: !Sub ${EnvironmentName}-RedisEndpoint
+
+  RedisPort:
+    Description: Redis Cluster Port
+    Value: !GetAtt RedisCluster.RedisEndpoint.Port
+    Export:
+      Name: !Sub ${EnvironmentName}-RedisPort

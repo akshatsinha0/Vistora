@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:14-alpine
+    container_name: vistora-postgres
+    environment:
+      POSTGRES_DB: vistora
+      POSTGRES_USER: vistora_user
+      POSTGRES_PASSWORD: vistora_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vistora_user -d vistora"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - vistora-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: vistora-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - vistora-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: vistora-backend
+    environment:
+      NODE_ENV: development
+      PORT: 8080
+      DATABASE_URL: postgresql://vistora_user:vistora_password@postgres:5432/vistora
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev-secret-key-change-in-production
+      JWT_EXPIRES_IN: 24h
+      CORS_ORIGIN: http://localhost:3000
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - vistora-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  vistora-network:
+    driver: bridge

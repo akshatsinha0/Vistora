@@ -1,6 +1,7 @@
 import { Task, TaskCreationAttributes, TaskStatus, TaskPriority } from '../models/Task';
 import { User } from '../models/User';
 import { Op } from 'sequelize';
+import { getWebSocketHandler } from '../websocket/socket.handler';
 
 export interface TaskFilters {
   status?: TaskStatus;
@@ -12,7 +13,16 @@ export interface TaskFilters {
 export class TaskService {
   async createTask(data: TaskCreationAttributes): Promise<Task> {
     const task = await Task.create(data);
-    return this.getTaskById(task.id);
+    const fullTask = await this.getTaskById(task.id);
+    
+    try {
+      const wsHandler = getWebSocketHandler();
+      await wsHandler.publishTaskEvent('created', fullTask);
+    } catch (error) {
+      // WebSocket not initialized or error publishing, continue without failing
+    }
+    
+    return fullTask;
   }
 
   async getTaskById(id: string): Promise<Task> {
@@ -69,7 +79,16 @@ export class TaskService {
     }
 
     await task.update(data);
-    return this.getTaskById(id);
+    const updatedTask = await this.getTaskById(id);
+    
+    try {
+      const wsHandler = getWebSocketHandler();
+      await wsHandler.publishTaskEvent('updated', updatedTask);
+    } catch (error) {
+      // WebSocket not initialized or error publishing, continue without failing
+    }
+    
+    return updatedTask;
   }
 
   async deleteTask(id: string): Promise<void> {
@@ -80,6 +99,13 @@ export class TaskService {
     }
 
     await task.destroy();
+    
+    try {
+      const wsHandler = getWebSocketHandler();
+      await wsHandler.publishTaskEvent('deleted', undefined, id);
+    } catch (error) {
+      // WebSocket not initialized or error publishing, continue without failing
+    }
   }
 
   async validateTaskOwnership(taskId: string, userId: string): Promise<boolean> {

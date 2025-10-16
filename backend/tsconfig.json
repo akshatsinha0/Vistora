@@ -5,6 +5,10 @@
     "lib": [
       "ES2020"
     ],
+    "types": [
+      "jest",
+      "node"
+    ],
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": true,
@@ -28,7 +32,6 @@
   ],
   "exclude": [
     "node_modules",
-    "dist",
-    "**/*.test.ts"
+    "dist"
   ]
 }

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { sequelize } from '../config/database';
+import { sequelizeInstance } from '../index';
 import { redisClient } from '../config/redis';
 import { logger } from '../utils/logger';
 
@@ -39,9 +39,11 @@ export const healthCheck = async (_req: Request, res: Response): Promise<void> =
     let dbResponseTime: number | undefined;
 
     try {
-      await sequelize.authenticate();
-      dbStatus = 'connected';
-      dbResponseTime = Date.now() - dbStartTime;
+      if (sequelizeInstance) {
+        await sequelizeInstance.authenticate();
+        dbStatus = 'connected';
+        dbResponseTime = Date.now() - dbStartTime;
+      }
     } catch (error) {
       logger.error('Database health check failed:', error);
     }

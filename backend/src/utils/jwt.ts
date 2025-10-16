@@ -1,5 +1,4 @@
 import * as jwt from 'jsonwebtoken';
-import { UserAttributes } from '../models/User';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-key-change-in-production';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
@@ -12,7 +11,13 @@ export interface JwtPayload {
   exp?: number;
 }
 
-export const generateToken = (user: UserAttributes): string => {
+interface UserForToken {
+  id: string;
+  email: string;
+  role: string;
+}
+
+export const generateToken = (user: UserForToken): string => {
   const payload: JwtPayload = {
     sub: user.id,
     email: user.email,

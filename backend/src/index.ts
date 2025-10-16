@@ -2,22 +2,50 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import http from 'http';
-import { createApp } from './app';
-import { connectDatabase } from './config/database';
+import { Sequelize } from 'sequelize';
 import { connectRedis } from './config/redis';
-import { initializeWebSocket } from './websocket/socket';
 import { logger } from './utils/logger';
+import { initUserModel } from './models/User';
+import { initTaskModel } from './models/Task';
 
 const PORT = process.env.PORT || 8080;
 
+// Global sequelize instance
+export let sequelizeInstance: Sequelize;
+
 const startServer = async () => {
   try {
-    await connectDatabase();
-    logger.info('Database connected successfully');
+    // Create sequelize instance
+    const databaseUrl = process.env.DATABASE_URL || 'postgresql://localhost:5432/vistora';
+    sequelizeInstance = new Sequelize(databaseUrl, {
+      dialect: 'postgres',
+      logging: false,
+      pool: {
+        max: 10,
+        min: 0,
+        acquire: 30000,
+        idle: 10000,
+      },
+    });
+    
+    // Initialize models
+    initUserModel(sequelizeInstance);
+    initTaskModel(sequelizeInstance);
+    logger.info('Models initialized successfully');
+    
+    await sequelizeInstance.authenticate();
+    logger.info('Database connection established successfully');
+    
+    await sequelizeInstance.sync({ alter: true });
+    logger.info('Database models synchronized successfully');
 
     await connectRedis();
     logger.info('Redis connected successfully');
 
+    // Import app after models are initialized
+    const { createApp } = await import('./app');
+    const { initializeWebSocket } = await import('./websocket/socket');
+    
     const app = createApp();
     const httpServer = http.createServer(app);
 

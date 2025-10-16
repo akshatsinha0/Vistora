@@ -1,41 +1,57 @@
 import { Sequelize } from 'sequelize';
-import { logger } from '../utils/logger';
 
-const databaseUrl = process.env.DATABASE_URL || 'postgresql://localhost:5432/vistora';
+// This will be set by index.ts after initialization
+let sequelizeInstance: Sequelize | undefined;
 
-export const sequelize = new Sequelize(databaseUrl, {
-  dialect: 'postgres',
-  logging: (msg) => logger.debug(msg),
-  pool: {
-    max: 10,
-    min: 0,
-    acquire: 30000,
-    idle: 10000,
-  },
-  dialectOptions: {
-    ssl: process.env.NODE_ENV === 'production' ? {
-      require: true,
-      rejectUnauthorized: false,
-    } : false,
+export const setSequelizeInstance = (instance: Sequelize): void => {
+  sequelizeInstance = instance;
+};
+
+export const getSequelizeInstance = (): Sequelize => {
+  if (!sequelizeInstance) {
+    throw new Error('Sequelize instance not initialized');
+  }
+  return sequelizeInstance;
+};
+
+// Export a getter that returns the current instance
+export const sequelize = new Proxy({} as Sequelize, {
+  get(_target, prop) {
+    if (!sequelizeInstance) {
+      return undefined;
+    }
+    return (sequelizeInstance as any)[prop];
   },
 });
 
 export const connectDatabase = async (): Promise<void> => {
+  if (!sequelizeInstance) {
+    throw new Error('Sequelize instance not initialized');
+  }
+  
   try {
-    await sequelize.authenticate();
-    logger.info('Database connection established successfully');
+    await sequelizeInstance.authenticate();
+    console.log('Database connection established successfully');
+    
+    // Sync models after connection
+    await sequelizeInstance.sync({ alter: true });
+    console.log('Database models synchronized successfully');
   } catch (error) {
-    logger.error('Unable to connect to database:', error);
+    console.error('Unable to connect to database:', error);
     throw error;
   }
 };
 
 export const syncDatabase = async (force = false): Promise<void> => {
+  if (!sequelizeInstance) {
+    throw new Error('Sequelize instance not initialized');
+  }
+  
   try {
-    await sequelize.sync({ force });
-    logger.info('Database synchronized successfully');
+    await sequelizeInstance.sync({ force });
+    console.log('Database synchronized successfully');
   } catch (error) {
-    logger.error('Database synchronization failed:', error);
+    console.error('Database synchronization failed:', error);
     throw error;
   }
 };

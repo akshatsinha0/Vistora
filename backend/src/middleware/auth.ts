@@ -1,10 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken, JwtPayload } from '../utils/jwt';
-import { User } from '../models/User';
 import { logger } from '../utils/logger';
 
 export interface AuthRequest extends Request {
-  user?: User;
+  user?: any;
   userId?: string;
   userRole?: string;
 }
@@ -46,6 +45,7 @@ export const authenticate = async (
       return;
     }
 
+    const { User } = await import('../models/User');
     const user = await User.findByPk(payload.sub);
 
     if (!user) {

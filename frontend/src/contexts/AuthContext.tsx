@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User, LoginData, RegisterData } from '../types';
+import { User, RegisterData, LoginData } from '../types';
 import { authService } from '../services/auth.service';
 
 interface AuthContextType {
@@ -16,7 +16,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth must be used within AuthProvider');
   }
   return context;
 };
@@ -36,7 +36,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (token && savedUser) {
         try {
-          const { user: currentUser } = await authService.getCurrentUser();
+          const currentUser = await authService.getCurrentUser();
           setUser(currentUser);
           authService.saveUser(currentUser);
         } catch (error) {
@@ -69,14 +69,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       await authService.logout();
     } catch (error) {
-      // Continue with logout even if API call fails
+      console.error('Logout error:', error);
+    } finally {
+      authService.removeToken();
+      authService.removeUser();
+      setUser(null);
     }
-    authService.removeToken();
-    authService.removeUser();
-    setUser(null);
   };
 
-  const value = {
+  const value: AuthContextType = {
     user,
     loading,
     login,

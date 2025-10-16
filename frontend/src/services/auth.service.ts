@@ -1,5 +1,5 @@
 import { apiClient } from './api';
-import { AuthResponse, LoginData, RegisterData, User } from '../types';
+import { AuthResponse, RegisterData, LoginData, User } from '../types';
 
 export const authService = {
   async register(data: RegisterData): Promise<AuthResponse> {
@@ -16,9 +16,9 @@ export const authService = {
     await apiClient.post('/auth/logout');
   },
 
-  async getCurrentUser(): Promise<{ user: User }> {
+  async getCurrentUser(): Promise<User> {
     const response = await apiClient.get<{ user: User }>('/auth/me');
-    return response.data;
+    return response.data.user;
   },
 
   saveToken(token: string): void {
@@ -44,9 +44,5 @@ export const authService = {
 
   removeUser(): void {
     localStorage.removeItem('user');
-  },
-
-  isAuthenticated(): boolean {
-    return !!this.getToken();
   },
 };

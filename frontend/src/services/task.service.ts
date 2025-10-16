@@ -2,7 +2,7 @@ import { apiClient } from './api';
 import { Task, CreateTaskDto, UpdateTaskDto, TaskFilters } from '../types';
 
 export const taskService = {
-  async listTasks(filters?: TaskFilters): Promise<Task[]> {
+  async getTasks(filters?: TaskFilters): Promise<Task[]> {
     const params = new URLSearchParams();
     if (filters?.status) params.append('status', filters.status);
     if (filters?.priority) params.append('priority', filters.priority);
@@ -13,7 +13,7 @@ export const taskService = {
     return response.data;
   },
 
-  async getTask(id: string): Promise<Task> {
+  async getTaskById(id: string): Promise<Task> {
     const response = await apiClient.get<Task>(`/tasks/${id}`);
     return response.data;
   },

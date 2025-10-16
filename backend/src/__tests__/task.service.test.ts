@@ -1,14 +1,15 @@
-import { taskService } from '../services/task.service';
+import { TaskService } from '../services/task.service';
 import { Task } from '../models/Task';
 import { User } from '../models/User';
 
 jest.mock('../models/Task');
 jest.mock('../models/User');
-jest.mock('../websocket/socket.handler');
-jest.mock('../utils/logger');
 
-describe('Task Service', () => {
+describe('TaskService', () => {
+  let taskService: TaskService;
+
   beforeEach(() => {
+    taskService = new TaskService();
     jest.clearAllMocks();
   });
 
@@ -25,30 +26,23 @@ describe('Task Service', () => {
       const mockTask = {
         id: 'task123',
         ...taskData,
-        toJSON: jest.fn().mockReturnValue({ id: 'task123', ...taskData }),
       };
 
       (Task.create as jest.Mock).mockResolvedValue(mockTask);
-      (Task.findByPk as jest.Mock).mockResolvedValue({
-        ...mockTask,
-        creator: { id: 'user123', name: 'Test User' },
-        assignee: null,
-      });
+      (Task.findByPk as jest.Mock).mockResolvedValue(mockTask);
 
       const result = await taskService.createTask(taskData);
 
       expect(Task.create).toHaveBeenCalledWith(taskData);
-      expect(result).toBeDefined();
-      expect(result.id).toBe('task123');
+      expect(result).toEqual(mockTask);
     });
   });
 
   describe('getTaskById', () => {
-    it('should return task by id', async () => {
+    it('should return task if found', async () => {
       const mockTask = {
         id: 'task123',
         title: 'Test Task',
-        creator: { id: 'user123', name: 'Test User' },
       };
 
       (Task.findByPk as jest.Mock).mockResolvedValue(mockTask);
@@ -67,7 +61,7 @@ describe('Task Service', () => {
   });
 
   describe('listTasks', () => {
-    it('should list all tasks without filters', async () => {
+    it('should return all tasks without filters', async () => {
       const mockTasks = [
         { id: 'task1', title: 'Task 1' },
         { id: 'task2', title: 'Task 2' },
@@ -77,23 +71,43 @@ describe('Task Service', () => {
 
       const result = await taskService.listTasks();
 
-      expect(Task.findAll).toHaveBeenCalled();
+      expect(Task.findAll).toHaveBeenCalledWith(expect.objectContaining({
+        where: {},
+      }));
       expect(result).toEqual(mockTasks);
     });
 
-    it('should list tasks with status filter', async () => {
-      const mockTasks = [{ id: 'task1', title: 'Task 1', status: 'todo' }];
+    it('should filter tasks by status', async () => {
+      const mockTasks = [{ id: 'task1', title: 'Task 1', status: 'done' }];
 
       (Task.findAll as jest.Mock).mockResolvedValue(mockTasks);
 
-      const result = await taskService.listTasks({ status: 'todo' });
+      const result = await taskService.listTasks({ status: 'done' });
 
-      expect(Task.findAll).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ status: 'todo' }),
-        })
-      );
+      expect(Task.findAll).toHaveBeenCalledWith(expect.objectContaining({
+        where: { status: 'done' },
+      }));
       expect(result).toEqual(mockTasks);
+    });
+
+    it('should filter tasks by multiple criteria', async () => {
+      const mockTasks = [{ id: 'task1', title: 'Task 1' }];
+
+      (Task.findAll as jest.Mock).mockResolvedValue(mockTasks);
+
+      await taskService.listTasks({
+        status: 'in_progress',
+        priority: 'high',
+        assigneeId: 'user123',
+      });
+
+      expect(Task.findAll).toHaveBeenCalledWith(expect.objectContaining({
+        where: {
+          status: 'in_progress',
+          priority: 'high',
+          assigneeId: 'user123',
+        },
+      }));
     });
   });
 
@@ -123,7 +137,8 @@ describe('Task Service', () => {
     it('should throw error if task not found', async () => {
       (Task.findByPk as jest.Mock).mockResolvedValue(null);
 
-      await expect(taskService.updateTask('nonexistent', { title: 'New' })).rejects.toThrow('Task not found');
+      await expect(taskService.updateTask('nonexistent', { title: 'New' }))
+        .rejects.toThrow('Task not found');
     });
   });
 
@@ -145,6 +160,42 @@ describe('Task Service', () => {
       (Task.findByPk as jest.Mock).mockResolvedValue(null);
 
       await expect(taskService.deleteTask('nonexistent')).rejects.toThrow('Task not found');
+    });
+  });
+
+  describe('validateTaskOwnership', () => {
+    it('should return true if user owns task', async () => {
+      const mockTask = {
+        id: 'task123',
+        creatorId: 'user123',
+      };
+
+      (Task.findByPk as jest.Mock).mockResolvedValue(mockTask);
+
+      const result = await taskService.validateTaskOwnership('task123', 'user123');
+
+      expect(result).toBe(true);
+    });
+
+    it('should return false if user does not own task', async () => {
+      const mockTask = {
+        id: 'task123',
+        creatorId: 'user123',
+      };
+
+      (Task.findByPk as jest.Mock).mockResolvedValue(mockTask);
+
+      const result = await taskService.validateTaskOwnership('task123', 'user456');
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false if task not found', async () => {
+      (Task.findByPk as jest.Mock).mockResolvedValue(null);
+
+      const result = await taskService.validateTaskOwnership('nonexistent', 'user123');
+
+      expect(result).toBe(false);
     });
   });
 });

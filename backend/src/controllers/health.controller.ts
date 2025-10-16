@@ -28,37 +28,59 @@ export const healthCheck = async (req: Request, res: Response): Promise<void> =>
   try {
     const startTime = Date.now();
     
-    const dbStatus = await checkDatabase();
-    const redisStatus = await checkRedis();
-    
     const memoryUsage = process.memoryUsage();
-    const totalMemory = memoryUsage.heapTotal;
-    const usedMemory = memoryUsage.heapUsed;
-    
-    const health: HealthStatus = {
-      status: dbStatus.status === 'connected' && redisStatus.status === 'connected' 
-        ? 'healthy' 
-        : 'unhealthy',
+    const memory = {
+      used: Math.round(memoryUsage.heapUsed / 1024 / 1024),
+      total: Math.round(memoryUsage.heapTotal / 1024 / 1024),
+      percentage: Math.round((memoryUsage.heapUsed / memoryUsage.heapTotal) * 100),
+    };
+
+    const dbStartTime = Date.now();
+    let dbStatus: 'connected' | 'disconnected' = 'disconnected';
+    let dbResponseTime: number | undefined;
+
+    try {
+      await sequelize.authenticate();
+      dbStatus = 'connected';
+      dbResponseTime = Date.now() - dbStartTime;
+    } catch (error) {
+      logger.error('Database health check failed:', error);
+    }
+
+    const redisStartTime = Date.now();
+    let redisStatus: 'connected' | 'disconnected' = 'disconnected';
+    let redisResponseTime: number | undefined;
+
+    try {
+      await redisClient.ping();
+      redisStatus = 'connected';
+      redisResponseTime = Date.now() - redisStartTime;
+    } catch (error) {
+      logger.error('Redis health check failed:', error);
+    }
+
+    const overallStatus: 'healthy' | 'unhealthy' = 
+      dbStatus === 'connected' && redisStatus === 'connected' ? 'healthy' : 'unhealthy';
+
+    const healthStatus: HealthStatus = {
+      status: overallStatus,
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      memory: {
-        used: Math.round(usedMemory / 1024 / 1024),
-        total: Math.round(totalMemory / 1024 / 1024),
-        percentage: Math.round((usedMemory / totalMemory) * 100),
-      },
+      memory,
       dependencies: {
-        database: dbStatus,
-        redis: redisStatus,
+        database: {
+          status: dbStatus,
+          responseTime: dbResponseTime,
+        },
+        redis: {
+          status: redisStatus,
+          responseTime: redisResponseTime,
+        },
       },
     };
 
-    const statusCode = health.status === 'healthy' ? 200 : 503;
-    
-    if (health.status === 'unhealthy') {
-      logger.warn('Health check failed', health);
-    }
-    
-    res.status(statusCode).json(health);
+    const statusCode = overallStatus === 'healthy' ? 200 : 503;
+    res.status(statusCode).json(healthStatus);
   } catch (error) {
     logger.error('Health check error:', error);
     res.status(503).json({
@@ -68,27 +90,3 @@ export const healthCheck = async (req: Request, res: Response): Promise<void> =>
     });
   }
 };
-
-async function checkDatabase(): Promise<{ status: 'connected' | 'disconnected'; responseTime?: number }> {
-  try {
-    const startTime = Date.now();
-    await sequelize.authenticate();
-    const responseTime = Date.now() - startTime;
-    return { status: 'connected', responseTime };
-  } catch (error) {
-    logger.error('Database health check failed:', error);
-    return { status: 'disconnected' };
-  }
-}
-
-async function checkRedis(): Promise<{ status: 'connected' | 'disconnected'; responseTime?: number }> {
-  try {
-    const startTime = Date.now();
-    await redisClient.ping();
-    const responseTime = Date.now() - startTime;
-    return { status: 'connected', responseTime };
-  } catch (error) {
-    logger.error('Redis health check failed:', error);
-    return { status: 'disconnected' };
-  }
-}

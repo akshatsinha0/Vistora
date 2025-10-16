@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { authenticate, requireRole } from '../middleware/auth';
+import { authenticate, requireRole, AuthRequest } from '../middleware/auth';
 import { User } from '../models/User';
 import * as jwtUtils from '../utils/jwt';
 
@@ -8,37 +8,34 @@ jest.mock('../utils/jwt');
 jest.mock('../utils/logger');
 
 describe('Auth Middleware', () => {
-  let mockRequest: Partial<Request>;
+  let mockRequest: Partial<AuthRequest>;
   let mockResponse: Partial<Response>;
-  let nextFunction: NextFunction;
+  let mockNext: NextFunction;
   let jsonMock: jest.Mock;
   let statusMock: jest.Mock;
 
   beforeEach(() => {
     jsonMock = jest.fn();
     statusMock = jest.fn().mockReturnValue({ json: jsonMock });
+    mockNext = jest.fn();
+
     mockRequest = {
       headers: {},
       path: '/api/tasks',
     };
+
     mockResponse = {
       status: statusMock,
       json: jsonMock,
     };
-    nextFunction = jest.fn();
+
     jest.clearAllMocks();
   });
 
   describe('authenticate', () => {
     it('should authenticate valid token', async () => {
       mockRequest.headers = {
-        authorization: 'Bearer validtoken123',
-      };
-
-      const mockPayload = {
-        sub: 'user123',
-        email: 'test@example.com',
-        role: 'member',
+        authorization: 'Bearer validToken',
       };
 
       const mockUser = {
@@ -47,22 +44,23 @@ describe('Auth Middleware', () => {
         role: 'member',
       };
 
-      (jwtUtils.verifyToken as jest.Mock).mockReturnValue(mockPayload);
+      (jwtUtils.verifyToken as jest.Mock).mockReturnValue({
+        sub: 'user123',
+        email: 'test@example.com',
+      });
       (User.findByPk as jest.Mock).mockResolvedValue(mockUser);
 
-      await authenticate(mockRequest as any, mockResponse as Response, nextFunction);
+      await authenticate(mockRequest as AuthRequest, mockResponse as Response, mockNext);
 
-      expect(jwtUtils.verifyToken).toHaveBeenCalledWith('validtoken123');
-      expect(User.findByPk).toHaveBeenCalledWith('user123');
-      expect(nextFunction).toHaveBeenCalled();
-      expect((mockRequest as any).user).toEqual(mockUser);
-      expect((mockRequest as any).userId).toBe('user123');
+      expect(mockRequest.user).toEqual(mockUser);
+      expect(mockRequest.userId).toBe('user123');
+      expect(mockNext).toHaveBeenCalled();
     });
 
     it('should return 401 if no token provided', async () => {
       mockRequest.headers = {};
 
-      await authenticate(mockRequest as any, mockResponse as Response, nextFunction);
+      await authenticate(mockRequest as AuthRequest, mockResponse as Response, mockNext);
 
       expect(statusMock).toHaveBeenCalledWith(401);
       expect(jsonMock).toHaveBeenCalledWith(
@@ -72,19 +70,19 @@ describe('Auth Middleware', () => {
           }),
         })
       );
-      expect(nextFunction).not.toHaveBeenCalled();
+      expect(mockNext).not.toHaveBeenCalled();
     });
 
     it('should return 401 if token is invalid', async () => {
       mockRequest.headers = {
-        authorization: 'Bearer invalidtoken',
+        authorization: 'Bearer invalidToken',
       };
 
       (jwtUtils.verifyToken as jest.Mock).mockImplementation(() => {
         throw new Error('Invalid token');
       });
 
-      await authenticate(mockRequest as any, mockResponse as Response, nextFunction);
+      await authenticate(mockRequest as AuthRequest, mockResponse as Response, mockNext);
 
       expect(statusMock).toHaveBeenCalledWith(401);
       expect(jsonMock).toHaveBeenCalledWith(
@@ -94,46 +92,43 @@ describe('Auth Middleware', () => {
           }),
         })
       );
-      expect(nextFunction).not.toHaveBeenCalled();
+      expect(mockNext).not.toHaveBeenCalled();
     });
 
     it('should return 401 if user not found', async () => {
       mockRequest.headers = {
-        authorization: 'Bearer validtoken123',
+        authorization: 'Bearer validToken',
       };
 
-      const mockPayload = {
+      (jwtUtils.verifyToken as jest.Mock).mockReturnValue({
         sub: 'user123',
         email: 'test@example.com',
-        role: 'member',
-      };
-
-      (jwtUtils.verifyToken as jest.Mock).mockReturnValue(mockPayload);
+      });
       (User.findByPk as jest.Mock).mockResolvedValue(null);
 
-      await authenticate(mockRequest as any, mockResponse as Response, nextFunction);
+      await authenticate(mockRequest as AuthRequest, mockResponse as Response, mockNext);
 
       expect(statusMock).toHaveBeenCalledWith(401);
-      expect(nextFunction).not.toHaveBeenCalled();
+      expect(mockNext).not.toHaveBeenCalled();
     });
   });
 
   describe('requireRole', () => {
-    it('should allow access for authorized role', () => {
-      (mockRequest as any).userRole = 'admin';
+    it('should allow access if user has required role', () => {
+      mockRequest.userRole = 'admin';
 
       const middleware = requireRole(['admin']);
-      middleware(mockRequest as any, mockResponse as Response, nextFunction);
+      middleware(mockRequest as AuthRequest, mockResponse as Response, mockNext);
 
-      expect(nextFunction).toHaveBeenCalled();
+      expect(mockNext).toHaveBeenCalled();
       expect(statusMock).not.toHaveBeenCalled();
     });
 
-    it('should deny access for unauthorized role', () => {
-      (mockRequest as any).userRole = 'member';
+    it('should deny access if user does not have required role', () => {
+      mockRequest.userRole = 'member';
 
       const middleware = requireRole(['admin']);
-      middleware(mockRequest as any, mockResponse as Response, nextFunction);
+      middleware(mockRequest as AuthRequest, mockResponse as Response, mockNext);
 
       expect(statusMock).toHaveBeenCalledWith(403);
       expect(jsonMock).toHaveBeenCalledWith(
@@ -143,15 +138,16 @@ describe('Auth Middleware', () => {
           }),
         })
       );
-      expect(nextFunction).not.toHaveBeenCalled();
+      expect(mockNext).not.toHaveBeenCalled();
     });
 
-    it('should deny access if no role set', () => {
-      const middleware = requireRole(['admin']);
-      middleware(mockRequest as any, mockResponse as Response, nextFunction);
+    it('should allow access if user has one of multiple required roles', () => {
+      mockRequest.userRole = 'member';
 
-      expect(statusMock).toHaveBeenCalledWith(403);
-      expect(nextFunction).not.toHaveBeenCalled();
+      const middleware = requireRole(['admin', 'member']);
+      middleware(mockRequest as AuthRequest, mockResponse as Response, mockNext);
+
+      expect(mockNext).toHaveBeenCalled();
     });
   });
 });

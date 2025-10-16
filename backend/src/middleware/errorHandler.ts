@@ -2,42 +2,55 @@ import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../utils/errors';
 import { logger } from '../utils/logger';
 
+export interface ErrorResponse {
+  error: {
+    code: string;
+    message: string;
+    details?: any;
+    timestamp: string;
+    path: string;
+    stack?: string;
+  };
+}
+
 export const errorHandler = (
   err: Error | AppError,
   req: Request,
   res: Response,
   next: NextFunction
 ): void => {
-  if (err instanceof AppError) {
-    logger.error('Application error', {
-      code: err.code,
-      message: err.message,
-      statusCode: err.statusCode,
-      path: req.path,
-      method: req.method,
-      stack: err.stack,
-    });
+  logger.error('Request error', {
+    error: err.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method,
+    body: req.body,
+    query: req.query,
+  });
 
-    res.status(err.statusCode).json({
+  if (err instanceof AppError) {
+    const response: ErrorResponse = {
       error: {
         code: err.code,
         message: err.message,
-        details: (err as any).details,
         timestamp: new Date().toISOString(),
         path: req.path,
       },
-    });
+    };
+
+    if ((err as any).details) {
+      response.error.details = (err as any).details;
+    }
+
+    if (process.env.NODE_ENV === 'development') {
+      response.error.stack = err.stack;
+    }
+
+    res.status(err.statusCode).json(response);
     return;
   }
 
-  logger.error('Unexpected error', {
-    message: err.message,
-    path: req.path,
-    method: req.method,
-    stack: err.stack,
-  });
-
-  res.status(500).json({
+  const response: ErrorResponse = {
     error: {
       code: 'INTERNAL_ERROR',
       message: process.env.NODE_ENV === 'production' 
@@ -46,7 +59,13 @@ export const errorHandler = (
       timestamp: new Date().toISOString(),
       path: req.path,
     },
-  });
+  };
+
+  if (process.env.NODE_ENV === 'development') {
+    response.error.stack = err.stack;
+  }
+
+  res.status(500).json(response);
 };
 
 export const notFoundHandler = (req: Request, res: Response): void => {

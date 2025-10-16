@@ -1,20 +1,20 @@
 export class AppError extends Error {
-  public readonly statusCode: number;
-  public readonly code: string;
-  public readonly isOperational: boolean;
+  public statusCode: number;
+  public code: string;
+  public isOperational: boolean;
 
-  constructor(message: string, statusCode: number, code: string, isOperational = true) {
+  constructor(message: string, statusCode: number, code: string) {
     super(message);
     this.statusCode = statusCode;
     this.code = code;
-    this.isOperational = isOperational;
+    this.isOperational = true;
 
     Error.captureStackTrace(this, this.constructor);
   }
 }
 
 export class ValidationError extends AppError {
-  public readonly details?: any;
+  public details?: any;
 
   constructor(message: string, details?: any) {
     super(message, 400, 'VALIDATION_FAILED');

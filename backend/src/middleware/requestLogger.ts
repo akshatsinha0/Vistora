@@ -15,10 +15,8 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction): 
       ip: req.ip,
     };
 
-    if (res.statusCode >= 500) {
-      logger.error('Request completed with server error', logData);
-    } else if (res.statusCode >= 400) {
-      logger.warn('Request completed with client error', logData);
+    if (res.statusCode >= 400) {
+      logger.warn('Request completed with error', logData);
     } else {
       logger.info('Request completed', logData);
     }

@@ -18,14 +18,17 @@ describe('Auth Controller', () => {
   beforeEach(() => {
     jsonMock = jest.fn();
     statusMock = jest.fn().mockReturnValue({ json: jsonMock });
+    
     mockRequest = {
       body: {},
       path: '/api/auth/register',
     };
+    
     mockResponse = {
       status: statusMock,
       json: jsonMock,
     };
+
     jest.clearAllMocks();
   });
 
@@ -37,10 +40,6 @@ describe('Auth Controller', () => {
         name: 'Test User',
       };
 
-      (passwordUtils.validatePasswordStrength as jest.Mock).mockReturnValue({ valid: true });
-      (User.findOne as jest.Mock).mockResolvedValue(null);
-      (passwordUtils.hashPassword as jest.Mock).mockResolvedValue('hashedPassword');
-      
       const mockUser = {
         id: '123',
         email: 'test@example.com',
@@ -53,15 +52,18 @@ describe('Auth Controller', () => {
           role: 'member',
         }),
       };
-      
+
+      (passwordUtils.validatePasswordStrength as jest.Mock).mockReturnValue({ valid: true });
+      (User.findOne as jest.Mock).mockResolvedValue(null);
+      (passwordUtils.hashPassword as jest.Mock).mockResolvedValue('hashedPassword');
       (User.create as jest.Mock).mockResolvedValue(mockUser);
-      (jwtUtils.generateToken as jest.Mock).mockReturnValue('token123');
+      (jwtUtils.generateToken as jest.Mock).mockReturnValue('mockToken');
 
       await register(mockRequest as Request, mockResponse as Response);
 
       expect(statusMock).toHaveBeenCalledWith(201);
       expect(jsonMock).toHaveBeenCalledWith({
-        token: 'token123',
+        token: 'mockToken',
         user: expect.objectContaining({
           email: 'test@example.com',
         }),
@@ -95,7 +97,7 @@ describe('Auth Controller', () => {
 
       (passwordUtils.validatePasswordStrength as jest.Mock).mockReturnValue({
         valid: false,
-        message: 'Password too weak',
+        message: 'Password must be at least 8 characters long',
       });
 
       await register(mockRequest as Request, mockResponse as Response);
@@ -145,13 +147,13 @@ describe('Auth Controller', () => {
 
       (User.findOne as jest.Mock).mockResolvedValue(mockUser);
       (passwordUtils.comparePassword as jest.Mock).mockResolvedValue(true);
-      (jwtUtils.generateToken as jest.Mock).mockReturnValue('token123');
+      (jwtUtils.generateToken as jest.Mock).mockReturnValue('mockToken');
 
       await login(mockRequest as Request, mockResponse as Response);
 
       expect(statusMock).toHaveBeenCalledWith(200);
       expect(jsonMock).toHaveBeenCalledWith({
-        token: 'token123',
+        token: 'mockToken',
         user: expect.objectContaining({
           email: 'test@example.com',
         }),

@@ -3,10 +3,23 @@ import { AuthRequest } from '../middleware/auth';
 import { taskService, TaskFilters } from '../services/task.service';
 import { logger } from '../utils/logger';
 import { TaskStatus, TaskPriority } from '../models/Task';
+import { broadcastTaskCreated, broadcastTaskUpdated, broadcastTaskDeleted } from '../websocket/socket';
 
 export const createTask = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { title, description, status, priority, assigneeId, dueDate } = req.body;
+
+    if (!title) {
+      res.status(400).json({
+        error: {
+          code: 'VALIDATION_FAILED',
+          message: 'Title is required',
+          timestamp: new Date().toISOString(),
+          path: req.path,
+        },
+      });
+      return;
+    }
 
     if (!req.userId) {
       res.status(401).json({
@@ -22,10 +35,10 @@ export const createTask = async (req: AuthRequest, res: Response): Promise<void>
 
     const task = await taskService.createTask({
       title,
-      description,
-      status,
-      priority,
-      assigneeId,
+      description: description || '',
+      status: status || 'todo',
+      priority: priority || 'medium',
+      assigneeId: assigneeId || null,
       creatorId: req.userId,
       dueDate: dueDate ? new Date(dueDate) : null,
     });
@@ -35,6 +48,8 @@ export const createTask = async (req: AuthRequest, res: Response): Promise<void>
       taskId: task.id,
       action: 'create_task',
     });
+
+    await broadcastTaskCreated(task);
 
     res.status(201).json(task);
   } catch (error) {
@@ -50,7 +65,7 @@ export const createTask = async (req: AuthRequest, res: Response): Promise<void>
   }
 };
 
-export const listTasks = async (req: AuthRequest, res: Response): Promise<void> => {
+export const getTasks = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const filters: TaskFilters = {};
 
@@ -74,11 +89,11 @@ export const listTasks = async (req: AuthRequest, res: Response): Promise<void> 
 
     res.status(200).json(tasks);
   } catch (error) {
-    logger.error('List tasks error:', error);
+    logger.error('Get tasks error:', error);
     res.status(500).json({
       error: {
         code: 'INTERNAL_ERROR',
-        message: 'Failed to list tasks',
+        message: 'Failed to retrieve tasks',
         timestamp: new Date().toISOString(),
         path: req.path,
       },
@@ -86,7 +101,7 @@ export const listTasks = async (req: AuthRequest, res: Response): Promise<void> 
   }
 };
 
-export const getTask = async (req: AuthRequest, res: Response): Promise<void> => {
+export const getTaskById = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
 
@@ -110,7 +125,7 @@ export const getTask = async (req: AuthRequest, res: Response): Promise<void> =>
     res.status(500).json({
       error: {
         code: 'INTERNAL_ERROR',
-        message: 'Failed to get task',
+        message: 'Failed to retrieve task',
         timestamp: new Date().toISOString(),
         path: req.path,
       },
@@ -123,20 +138,24 @@ export const updateTask = async (req: AuthRequest, res: Response): Promise<void>
     const { id } = req.params;
     const { title, description, status, priority, assigneeId, dueDate } = req.body;
 
-    const task = await taskService.updateTask(id, {
-      title,
-      description,
-      status,
-      priority,
-      assigneeId,
-      dueDate: dueDate ? new Date(dueDate) : null,
-    });
+    const updateData: any = {};
+
+    if (title !== undefined) updateData.title = title;
+    if (description !== undefined) updateData.description = description;
+    if (status !== undefined) updateData.status = status;
+    if (priority !== undefined) updateData.priority = priority;
+    if (assigneeId !== undefined) updateData.assigneeId = assigneeId;
+    if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null;
+
+    const task = await taskService.updateTask(id, updateData);
 
     logger.info('Task updated', {
       userId: req.userId,
       taskId: task.id,
       action: 'update_task',
     });
+
+    await broadcastTaskUpdated(task);
 
     res.status(200).json(task);
   } catch (error: any) {
@@ -175,6 +194,8 @@ export const deleteTask = async (req: AuthRequest, res: Response): Promise<void>
       taskId: id,
       action: 'delete_task',
     });
+
+    await broadcastTaskDeleted(id);
 
     res.status(204).send();
   } catch (error: any) {

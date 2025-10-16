@@ -54,6 +54,6 @@ export const disconnectRedis = async (): Promise<void> => {
     await redisSubClient.quit();
     logger.info('Redis connections closed');
   } catch (error) {
-    logger.error('Error disconnecting from Redis:', error);
+    logger.error('Error disconnecting Redis:', error);
   }
 };

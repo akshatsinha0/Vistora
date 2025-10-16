@@ -162,14 +162,14 @@ export const RegisterForm: React.FC = () => {
             variant="contained"
             disabled={loading}
             sx={{
-              backgroundColor: '#ff6600',
+              backgroundColor: '#fdab9f',
               color: '#ffffff',
               fontFamily: '"Happy Monkey", system-ui',
               padding: '12px',
               fontSize: '16px',
               border: '2px solid #000000',
               '&:hover': {
-                backgroundColor: '#ff6600',
+                backgroundColor: '#fdab9f',
               },
             }}
           >
@@ -189,7 +189,7 @@ export const RegisterForm: React.FC = () => {
           <Link
             to="/login"
             style={{
-              color: '#ff6600',
+              color: '#fdab9f',
               textDecoration: 'none',
               fontWeight: 'bold',
             }}

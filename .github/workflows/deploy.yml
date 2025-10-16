@@ -1,0 +1,148 @@
+name: Build and Deploy to AWS
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/deploy.yml'
+
+env:
+  AWS_REGION: us-east-1
+  ECR_BACKEND_REPOSITORY: vistora-backend
+  ECR_FRONTEND_REPOSITORY: vistora-frontend
+  ECS_CLUSTER: production-ECSCluster
+  ECS_BACKEND_SERVICE: production-BackendService
+  ECS_FRONTEND_SERVICE: production-FrontendService
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Get commit SHA
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Build and push backend image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ steps.vars.outputs.sha_short }}
+        run: |
+          cd backend
+          docker build -t $ECR_REGISTRY/$ECR_BACKEND_REPOSITORY:$IMAGE_TAG \
+                       -t $ECR_REGISTRY/$ECR_BACKEND_REPOSITORY:latest .
+          docker push $ECR_REGISTRY/$ECR_BACKEND_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_BACKEND_REPOSITORY:latest
+          echo "Backend image pushed: $ECR_REGISTRY/$ECR_BACKEND_REPOSITORY:$IMAGE_TAG"
+
+      - name: Build and push frontend image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ steps.vars.outputs.sha_short }}
+        run: |
+          cd frontend
+          docker build -t $ECR_REGISTRY/$ECR_FRONTEND_REPOSITORY:$IMAGE_TAG \
+                       -t $ECR_REGISTRY/$ECR_FRONTEND_REPOSITORY:latest .
+          docker push $ECR_REGISTRY/$ECR_FRONTEND_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_FRONTEND_REPOSITORY:latest
+          echo "Frontend image pushed: $ECR_REGISTRY/$ECR_FRONTEND_REPOSITORY:$IMAGE_TAG"
+
+      - name: Update backend ECS service
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ steps.vars.outputs.sha_short }}
+        run: |
+          # Get current task definition
+          TASK_DEFINITION=$(aws ecs describe-task-definition \
+            --task-definition production-BackendTask \
+            --query 'taskDefinition' \
+            --output json)
+          
+          # Update image in task definition
+          NEW_TASK_DEF=$(echo $TASK_DEFINITION | jq --arg IMAGE "$ECR_REGISTRY/$ECR_BACKEND_REPOSITORY:$IMAGE_TAG" \
+            '.containerDefinitions[0].image = $IMAGE | 
+             del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
+          
+          # Register new task definition
+          NEW_TASK_INFO=$(aws ecs register-task-definition --cli-input-json "$NEW_TASK_DEF")
+          NEW_REVISION=$(echo $NEW_TASK_INFO | jq -r '.taskDefinition.revision')
+          
+          # Update service
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service $ECS_BACKEND_SERVICE \
+            --task-definition production-BackendTask:$NEW_REVISION \
+            --force-new-deployment
+          
+          echo "Backend service updated to revision $NEW_REVISION"
+
+      - name: Update frontend ECS service
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ steps.vars.outputs.sha_short }}
+        run: |
+          # Get current task definition
+          TASK_DEFINITION=$(aws ecs describe-task-definition \
+            --task-definition production-FrontendTask \
+            --query 'taskDefinition' \
+            --output json)
+          
+          # Update image in task definition
+          NEW_TASK_DEF=$(echo $TASK_DEFINITION | jq --arg IMAGE "$ECR_REGISTRY/$ECR_FRONTEND_REPOSITORY:$IMAGE_TAG" \
+            '.containerDefinitions[0].image = $IMAGE | 
+             del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
+          
+          # Register new task definition
+          NEW_TASK_INFO=$(aws ecs register-task-definition --cli-input-json "$NEW_TASK_DEF")
+          NEW_REVISION=$(echo $NEW_TASK_INFO | jq -r '.taskDefinition.revision')
+          
+          # Update service
+          aws ecs update-service \
+            --cluster $ECS_CLUSTER \
+            --service $ECS_FRONTEND_SERVICE \
+            --task-definition production-FrontendTask:$NEW_REVISION \
+            --force-new-deployment
+          
+          echo "Frontend service updated to revision $NEW_REVISION"
+
+      - name: Wait for services to stabilize
+        run: |
+          echo "Waiting for backend service to stabilize..."
+          aws ecs wait services-stable \
+            --cluster $ECS_CLUSTER \
+            --services $ECS_BACKEND_SERVICE
+          
+          echo "Waiting for frontend service to stabilize..."
+          aws ecs wait services-stable \
+            --cluster $ECS_CLUSTER \
+            --services $ECS_FRONTEND_SERVICE
+          
+          echo "✅ Deployment completed successfully!"
+
+      - name: Deployment summary
+        env:
+          IMAGE_TAG: ${{ steps.vars.outputs.sha_short }}
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: $IMAGE_TAG" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backend Image**: $ECR_BACKEND_REPOSITORY:$IMAGE_TAG" >> $GITHUB_STEP_SUMMARY
+          echo "- **Frontend Image**: $ECR_FRONTEND_REPOSITORY:$IMAGE_TAG" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ✅ Deployed" >> $GITHUB_STEP_SUMMARY

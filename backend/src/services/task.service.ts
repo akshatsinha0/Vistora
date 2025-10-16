@@ -1,6 +1,5 @@
 import { Task, TaskCreationAttributes, TaskStatus, TaskPriority } from '../models/Task';
 import { User } from '../models/User';
-import { Op } from 'sequelize';
 import { getWebSocketHandler } from '../websocket/socket.handler';
 
 export interface TaskFilters {

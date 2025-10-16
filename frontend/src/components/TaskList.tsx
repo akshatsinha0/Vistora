@@ -294,7 +294,7 @@ export const TaskList: React.FC = () => {
       {showForm && (
         <TaskForm
           task={editingTask}
-          onSubmit={editingTask ? handleUpdateTask : handleCreateTask}
+          onSubmit={(data) => editingTask ? handleUpdateTask(data) : handleCreateTask(data as CreateTaskDto)}
           onCancel={handleCancelForm}
         />
       )}

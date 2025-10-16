@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
 import { UserAttributes } from '../models/User';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-key-change-in-production';
@@ -21,7 +21,7 @@ export const generateToken = (user: UserAttributes): string => {
 
   return jwt.sign(payload, JWT_SECRET, {
     expiresIn: JWT_EXPIRES_IN,
-  });
+  } as jwt.SignOptions);
 };
 
 export const verifyToken = (token: string): JwtPayload => {

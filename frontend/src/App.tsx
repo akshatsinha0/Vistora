@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { WebSocketProvider } from './contexts/WebSocketContext';
@@ -9,20 +9,16 @@ import { TaskList } from './components/TaskList';
 import { Task } from './types';
 
 const TaskListWithWebSocket: React.FC = () => {
-  const [tasks, setTasks] = useState<Task[]>([]);
-
   const handleTaskCreated = (task: Task) => {
-    setTasks((prev) => [task, ...prev]);
+    console.log('Task created:', task);
   };
 
   const handleTaskUpdated = (updatedTask: Task) => {
-    setTasks((prev) =>
-      prev.map((task) => (task.id === updatedTask.id ? updatedTask : task))
-    );
+    console.log('Task updated:', updatedTask);
   };
 
   const handleTaskDeleted = (taskId: string) => {
-    setTasks((prev) => prev.filter((task) => task.id !== taskId));
+    console.log('Task deleted:', taskId);
   };
 
   return (

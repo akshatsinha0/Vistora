@@ -24,9 +24,8 @@ interface HealthStatus {
   };
 }
 
-export const healthCheck = async (req: Request, res: Response): Promise<void> => {
+export const healthCheck = async (_req: Request, res: Response): Promise<void> => {
   try {
-    const startTime = Date.now();
     
     const memoryUsage = process.memoryUsage();
     const memory = {

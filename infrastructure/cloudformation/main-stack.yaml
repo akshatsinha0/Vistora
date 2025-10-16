@@ -31,7 +31,7 @@ Resources:
   NetworkStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: ./network-stack.yaml
+      TemplateURL: https://vistora-cloudformation-templates-781177225477.s3.amazonaws.com/network-stack.yaml
       Parameters:
         EnvironmentName: !Ref EnvironmentName
       Tags:
@@ -42,7 +42,7 @@ Resources:
     Type: AWS::CloudFormation::Stack
     DependsOn: NetworkStack
     Properties:
-      TemplateURL: ./security-stack.yaml
+      TemplateURL: https://vistora-cloudformation-templates-781177225477.s3.amazonaws.com/security-stack.yaml
       Parameters:
         EnvironmentName: !Ref EnvironmentName
         VPCId: !GetAtt NetworkStack.Outputs.VPCId
@@ -54,7 +54,7 @@ Resources:
     Type: AWS::CloudFormation::Stack
     DependsOn: SecurityStack
     Properties:
-      TemplateURL: ./database-stack.yaml
+      TemplateURL: https://vistora-cloudformation-templates-781177225477.s3.amazonaws.com/database-stack.yaml
       Parameters:
         EnvironmentName: !Ref EnvironmentName
         DatabaseSubnet1Id: !GetAtt NetworkStack.Outputs.DatabaseSubnet1Id
@@ -69,7 +69,7 @@ Resources:
     Type: AWS::CloudFormation::Stack
     DependsOn: SecurityStack
     Properties:
-      TemplateURL: ./cache-stack.yaml
+      TemplateURL: https://vistora-cloudformation-templates-781177225477.s3.amazonaws.com/cache-stack.yaml
       Parameters:
         EnvironmentName: !Ref EnvironmentName
         DatabaseSubnet1Id: !GetAtt NetworkStack.Outputs.DatabaseSubnet1Id
@@ -85,7 +85,7 @@ Resources:
       - DatabaseStack
       - CacheStack
     Properties:
-      TemplateURL: ./compute-stack.yaml
+      TemplateURL: https://vistora-cloudformation-templates-781177225477.s3.amazonaws.com/compute-stack.yaml
       Parameters:
         EnvironmentName: !Ref EnvironmentName
         VPCId: !GetAtt NetworkStack.Outputs.VPCId
@@ -109,7 +109,7 @@ Resources:
     Type: AWS::CloudFormation::Stack
     DependsOn: ComputeStack
     Properties:
-      TemplateURL: ./monitoring-stack.yaml
+      TemplateURL: https://vistora-cloudformation-templates-781177225477.s3.amazonaws.com/monitoring-stack.yaml
       Parameters:
         EnvironmentName: !Ref EnvironmentName
         ECSClusterName: !GetAtt ComputeStack.Outputs.ECSClusterName

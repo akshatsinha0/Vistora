@@ -21,7 +21,7 @@ Parameters:
 
   CacheNodeType:
     Type: String
-    Default: cache.t3.micro
+    Default: cache.t2.micro
     Description: Cache node type
 
 Resources:
@@ -42,9 +42,9 @@ Resources:
   RedisCluster:
     Type: AWS::ElastiCache::CacheCluster
     Properties:
-      CacheClusterId: !Sub ${EnvironmentName}-redis
+      CacheClusterId: vistora-redis-prod
       Engine: redis
-      EngineVersion: '7.0'
+      EngineVersion: '6.2'
       CacheNodeType: !Ref CacheNodeType
       NumCacheNodes: 1
       Port: 6379
@@ -54,8 +54,6 @@ Resources:
       PreferredMaintenanceWindow: 'sun:05:00-sun:06:00'
       SnapshotRetentionLimit: 5
       SnapshotWindow: '03:00-05:00'
-      TransitEncryptionEnabled: false
-      AtRestEncryptionEnabled: false
       Tags:
         - Key: Name
           Value: !Sub ${EnvironmentName}-redis

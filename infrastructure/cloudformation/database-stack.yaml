@@ -21,7 +21,7 @@ Parameters:
 
   DBInstanceClass:
     Type: String
-    Default: db.t3.micro
+    Default: db.t2.micro
     Description: Database instance class
 
   DBAllocatedStorage:
@@ -66,10 +66,10 @@ Resources:
     Type: AWS::RDS::DBInstance
     DeletionPolicy: Snapshot
     Properties:
-      DBInstanceIdentifier: !Sub ${EnvironmentName}-postgres
+      DBInstanceIdentifier: vistora-postgres-prod
       DBName: !Ref DBName
       Engine: postgres
-      EngineVersion: '14.10'
+      EngineVersion: '14.13'
       DBInstanceClass: !Ref DBInstanceClass
       AllocatedStorage: !Ref DBAllocatedStorage
       StorageType: gp2

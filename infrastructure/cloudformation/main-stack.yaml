@@ -1,0 +1,147 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Vistora Main Stack - Orchestrates all nested stacks'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: production
+    Description: Environment name prefix
+
+  DBPassword:
+    Type: String
+    NoEcho: true
+    Description: Database master password
+    MinLength: 8
+    MaxLength: 41
+
+  BackendImageUri:
+    Type: String
+    Description: Backend Docker image URI in ECR
+
+  FrontendImageUri:
+    Type: String
+    Description: Frontend Docker image URI in ECR
+
+  AlertEmail:
+    Type: String
+    Description: Email address for alarm notifications
+    Default: admin@example.com
+
+Resources:
+  NetworkStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./network-stack.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+      Tags:
+        - Key: Project
+          Value: Vistora
+
+  SecurityStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: NetworkStack
+    Properties:
+      TemplateURL: ./security-stack.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        VPCId: !GetAtt NetworkStack.Outputs.VPCId
+      Tags:
+        - Key: Project
+          Value: Vistora
+
+  DatabaseStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: SecurityStack
+    Properties:
+      TemplateURL: ./database-stack.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        DatabaseSubnet1Id: !GetAtt NetworkStack.Outputs.DatabaseSubnet1Id
+        DatabaseSubnet2Id: !GetAtt NetworkStack.Outputs.DatabaseSubnet2Id
+        RDSSecurityGroupId: !GetAtt SecurityStack.Outputs.RDSSecurityGroupId
+        DBPassword: !Ref DBPassword
+      Tags:
+        - Key: Project
+          Value: Vistora
+
+  CacheStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: SecurityStack
+    Properties:
+      TemplateURL: ./cache-stack.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        DatabaseSubnet1Id: !GetAtt NetworkStack.Outputs.DatabaseSubnet1Id
+        DatabaseSubnet2Id: !GetAtt NetworkStack.Outputs.DatabaseSubnet2Id
+        RedisSecurityGroupId: !GetAtt SecurityStack.Outputs.RedisSecurityGroupId
+      Tags:
+        - Key: Project
+          Value: Vistora
+
+  ComputeStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - DatabaseStack
+      - CacheStack
+    Properties:
+      TemplateURL: ./compute-stack.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        VPCId: !GetAtt NetworkStack.Outputs.VPCId
+        PublicSubnet1Id: !GetAtt NetworkStack.Outputs.PublicSubnet1Id
+        PublicSubnet2Id: !GetAtt NetworkStack.Outputs.PublicSubnet2Id
+        PrivateSubnet1Id: !GetAtt NetworkStack.Outputs.PrivateSubnet1Id
+        PrivateSubnet2Id: !GetAtt NetworkStack.Outputs.PrivateSubnet2Id
+        ALBSecurityGroupId: !GetAtt SecurityStack.Outputs.ALBSecurityGroupId
+        ECSSecurityGroupId: !GetAtt SecurityStack.Outputs.ECSSecurityGroupId
+        ECSTaskExecutionRoleArn: !GetAtt SecurityStack.Outputs.ECSTaskExecutionRoleArn
+        ECSTaskRoleArn: !GetAtt SecurityStack.Outputs.ECSTaskRoleArn
+        BackendImageUri: !Ref BackendImageUri
+        FrontendImageUri: !Ref FrontendImageUri
+        DBEndpoint: !GetAtt DatabaseStack.Outputs.DBInstanceEndpoint
+        RedisEndpoint: !GetAtt CacheStack.Outputs.RedisEndpoint
+      Tags:
+        - Key: Project
+          Value: Vistora
+
+  MonitoringStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: ComputeStack
+    Properties:
+      TemplateURL: ./monitoring-stack.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        ECSClusterName: !GetAtt ComputeStack.Outputs.ECSClusterName
+        BackendServiceName: !GetAtt ComputeStack.Outputs.BackendServiceName
+        FrontendServiceName: !GetAtt ComputeStack.Outputs.FrontendServiceName
+        ALBTargetGroupArn: !GetAtt ComputeStack.Outputs.BackendTargetGroupArn
+        AlertEmail: !Ref AlertEmail
+      Tags:
+        - Key: Project
+          Value: Vistora
+
+Outputs:
+  VPCId:
+    Description: VPC ID
+    Value: !GetAtt NetworkStack.Outputs.VPCId
+
+  ALBDNSName:
+    Description: Application Load Balancer DNS Name
+    Value: !GetAtt ComputeStack.Outputs.ALBDNSName
+
+  ECSClusterName:
+    Description: ECS Cluster Name
+    Value: !GetAtt ComputeStack.Outputs.ECSClusterName
+
+  DBEndpoint:
+    Description: Database Endpoint
+    Value: !GetAtt DatabaseStack.Outputs.DBInstanceEndpoint
+
+  RedisEndpoint:
+    Description: Redis Endpoint
+    Value: !GetAtt CacheStack.Outputs.RedisEndpoint
+
+  ApplicationURL:
+    Description: Application URL
+    Value: !Sub http://${ComputeStack.Outputs.ALBDNSName}

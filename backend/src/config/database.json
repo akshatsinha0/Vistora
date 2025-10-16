@@ -1,0 +1,19 @@
+{
+  "development": {
+    "username": "vistora_user",
+    "password": "vistora_password",
+    "database": "vistora",
+    "host": "localhost",
+    "dialect": "postgres"
+  },
+  "production": {
+    "use_env_variable": "DATABASE_URL",
+    "dialect": "postgres",
+    "dialectOptions": {
+      "ssl": {
+        "require": true,
+        "rejectUnauthorized": false
+      }
+    }
+  }
+}

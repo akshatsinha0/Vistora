@@ -45,7 +45,7 @@ export const LoginForm: React.FC = () => {
           width: '100%',
           maxWidth: 400,
           padding: 4,
-          backgroundColor: '#ffffff',
+          backgroundColor: '#fdab9f',
           border: '2px solid #000000',
         }}
       >
@@ -136,14 +136,14 @@ export const LoginForm: React.FC = () => {
             variant="contained"
             disabled={loading}
             sx={{
-              backgroundColor: '#fdab9f',
+              backgroundColor: '#ff6600',
               color: '#ffffff',
               fontFamily: '"Happy Monkey", system-ui',
               padding: '12px',
               fontSize: '16px',
               border: '2px solid #000000',
               '&:hover': {
-                backgroundColor: '#fdab9f',
+                backgroundColor: '#ff6600',
               },
             }}
           >

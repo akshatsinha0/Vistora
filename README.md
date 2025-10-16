@@ -210,22 +210,6 @@ The application follows a microservices architecture with:
 - Encryption at rest for RDS
 - Encryption in transit with TLS
 
-## Cost Optimization
-
-- t3.micro instances for database and cache
-- Fargate with minimal CPU/memory allocation
-- Single-AZ deployment for non-production
-- Auto-scaling based on CPU utilization
-- 7-day log retention
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes with conventional commit messages
-4. Push to your fork
-5. Create a Pull Request
-
 ## License
 
 MIT License

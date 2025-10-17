@@ -25,7 +25,7 @@ Parameters:
   AlertEmail:
     Type: String
     Description: Email address for alarm notifications
-    Default: admin@example.com
+    Default: akshatsinhasramhardy@gmail.com
 
 Resources:
   NetworkStack:

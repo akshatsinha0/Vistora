@@ -208,9 +208,8 @@ Resources:
               Value: !Sub postgresql://vistora_admin:${DBPassword}@${DBEndpoint}:5432/vistora
             - Name: REDIS_URL
               Value: !Sub redis://${RedisEndpoint}:6379
-          Secrets:
             - Name: JWT_SECRET
-              ValueFrom: !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:vistora/jwt
+              Value: temp-jwt-secret-change-in-production
           LogConfiguration:
             LogDriver: awslogs
             Options:
@@ -306,37 +305,6 @@ Resources:
         - Key: Project
           Value: Vistora
 
-Outputs:
-  ECSClusterName:
-    Description: ECS Cluster Name
-    Value: !Ref ECSCluster
-    Export:
-      Name: !Sub ${EnvironmentName}-ECSClusterName
-
-  ALBDNSName:
-    Description: Application Load Balancer DNS Name
-    Value: !GetAtt ApplicationLoadBalancer.DNSName
-    Export:
-      Name: !Sub ${EnvironmentName}-ALBDNSName
-
-  BackendServiceName:
-    Description: Backend Service Name
-    Value: !GetAtt BackendService.Name
-    Export:
-      Name: !Sub ${EnvironmentName}-BackendServiceName
-
-  FrontendServiceName:
-    Description: Frontend Service Name
-    Value: !GetAtt FrontendService.Name
-    Export:
-      Name: !Sub ${EnvironmentName}-FrontendServiceName
-
-  BackendTargetGroupArn:
-    Description: Backend Target Group ARN
-    Value: !Ref BackendTargetGroup
-    Export:
-      Name: !Sub ${EnvironmentName}-BackendTargetGroupArn
-
   BackendAutoScalingTarget:
     Type: AWS::ApplicationAutoScaling::ScalableTarget
     Properties:
@@ -382,3 +350,34 @@ Outputs:
         TargetValue: 70.0
         ScaleOutCooldown: 300
         ScaleInCooldown: 300
+
+Outputs:
+  ECSClusterName:
+    Description: ECS Cluster Name
+    Value: !Ref ECSCluster
+    Export:
+      Name: !Sub ${EnvironmentName}-ECSClusterName
+
+  ALBDNSName:
+    Description: Application Load Balancer DNS Name
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+    Export:
+      Name: !Sub ${EnvironmentName}-ALBDNSName
+
+  BackendServiceName:
+    Description: Backend Service Name
+    Value: !GetAtt BackendService.Name
+    Export:
+      Name: !Sub ${EnvironmentName}-BackendServiceName
+
+  FrontendServiceName:
+    Description: Frontend Service Name
+    Value: !GetAtt FrontendService.Name
+    Export:
+      Name: !Sub ${EnvironmentName}-FrontendServiceName
+
+  BackendTargetGroupArn:
+    Description: Backend Target Group ARN
+    Value: !Ref BackendTargetGroup
+    Export:
+      Name: !Sub ${EnvironmentName}-BackendTargetGroupArn

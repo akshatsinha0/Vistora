@@ -21,7 +21,7 @@ Parameters:
 
   DBInstanceClass:
     Type: String
-    Default: db.t2.micro
+    Default: db.t3.micro
     Description: Database instance class
 
   DBAllocatedStorage:
@@ -72,7 +72,7 @@ Resources:
       DBName: !Ref DBName
       AllocatedStorage: !Ref DBAllocatedStorage
       StorageType: gp2
-      StorageEncrypted: true
+      StorageEncrypted: false
       MasterUsername: !Ref DBUsername
       MasterUserPassword: !Ref DBPassword
       DBSubnetGroupName: !Ref DBSubnetGroup

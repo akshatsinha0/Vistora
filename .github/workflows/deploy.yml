@@ -14,9 +14,9 @@ env:
   AWS_REGION: us-east-1
   ECR_BACKEND_REPOSITORY: vistora-backend
   ECR_FRONTEND_REPOSITORY: vistora-frontend
-  ECS_CLUSTER: production-ECSCluster
-  ECS_BACKEND_SERVICE: production-BackendService
-  ECS_FRONTEND_SERVICE: production-FrontendService
+  ECS_CLUSTER: production-cluster
+  ECS_BACKEND_SERVICE: production-backend-service
+  ECS_FRONTEND_SERVICE: production-frontend-service
 
 jobs:
   build-and-deploy:
@@ -93,14 +93,14 @@ jobs:
           IMAGE_TAG: ${{ steps.vars.outputs.sha_short }}
         run: |
           # Check if task definition exists
-          if ! aws ecs describe-task-definition --task-definition production-BackendTask &>/dev/null; then
+          if ! aws ecs describe-task-definition --task-definition production-backend &>/dev/null; then
             echo "⚠️  Backend task definition does not exist - skipping"
             exit 0
           fi
           
           # Get current task definition
           TASK_DEFINITION=$(aws ecs describe-task-definition \
-            --task-definition production-BackendTask \
+            --task-definition production-backend \
             --query 'taskDefinition' \
             --output json)
           
@@ -117,7 +117,7 @@ jobs:
           aws ecs update-service \
             --cluster $ECS_CLUSTER \
             --service $ECS_BACKEND_SERVICE \
-            --task-definition production-BackendTask:$NEW_REVISION \
+            --task-definition production-backend:$NEW_REVISION \
             --force-new-deployment
           
           echo "✅ Backend service updated to revision $NEW_REVISION"
@@ -129,14 +129,14 @@ jobs:
           IMAGE_TAG: ${{ steps.vars.outputs.sha_short }}
         run: |
           # Check if task definition exists
-          if ! aws ecs describe-task-definition --task-definition production-FrontendTask &>/dev/null; then
+          if ! aws ecs describe-task-definition --task-definition production-frontend &>/dev/null; then
             echo "⚠️  Frontend task definition does not exist - skipping"
             exit 0
           fi
           
           # Get current task definition
           TASK_DEFINITION=$(aws ecs describe-task-definition \
-            --task-definition production-FrontendTask \
+            --task-definition production-frontend \
             --query 'taskDefinition' \
             --output json)
           
@@ -153,7 +153,7 @@ jobs:
           aws ecs update-service \
             --cluster $ECS_CLUSTER \
             --service $ECS_FRONTEND_SERVICE \
-            --task-definition production-FrontendTask:$NEW_REVISION \
+            --task-definition production-frontend:$NEW_REVISION \
             --force-new-deployment
           
           echo "✅ Frontend service updated to revision $NEW_REVISION"

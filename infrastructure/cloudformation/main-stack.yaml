@@ -101,6 +101,7 @@ Resources:
         FrontendImageUri: !Ref FrontendImageUri
         DBEndpoint: !GetAtt DatabaseStack.Outputs.DBInstanceEndpoint
         RedisEndpoint: !GetAtt CacheStack.Outputs.RedisEndpoint
+        DBPassword: !Ref DBPassword
       Tags:
         - Key: Project
           Value: Vistora

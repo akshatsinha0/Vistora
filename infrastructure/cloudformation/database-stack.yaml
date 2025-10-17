@@ -66,10 +66,10 @@ Resources:
     Type: AWS::RDS::DBInstance
     DeletionPolicy: Snapshot
     Properties:
-      DBInstanceIdentifier: vistora-postgres-prod
+      DBInstanceIdentifier: !Sub ${EnvironmentName}-vistora-postgres
       DBName: !Ref DBName
       Engine: postgres
-      EngineVersion: '14.13'
+      EngineVersion: '14.10'
       DBInstanceClass: !Ref DBInstanceClass
       AllocatedStorage: !Ref DBAllocatedStorage
       StorageType: gp2

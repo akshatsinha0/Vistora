@@ -42,9 +42,9 @@ Resources:
   RedisCluster:
     Type: AWS::ElastiCache::CacheCluster
     Properties:
-      CacheClusterId: vistora-redis-prod
+      CacheClusterId: !Sub ${EnvironmentName}-vistora-redis
       Engine: redis
-      EngineVersion: '6.2'
+      EngineVersion: '7.0'
       CacheNodeType: !Ref CacheNodeType
       NumCacheNodes: 1
       Port: 6379

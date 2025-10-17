@@ -59,6 +59,11 @@ Parameters:
     Type: String
     Description: Redis endpoint
 
+  DBPassword:
+    Type: String
+    NoEcho: true
+    Description: Database password
+
 Resources:
   ECSCluster:
     Type: AWS::ECS::Cluster
@@ -325,6 +330,12 @@ Outputs:
     Value: !GetAtt FrontendService.Name
     Export:
       Name: !Sub ${EnvironmentName}-FrontendServiceName
+
+  BackendTargetGroupArn:
+    Description: Backend Target Group ARN
+    Value: !Ref BackendTargetGroup
+    Export:
+      Name: !Sub ${EnvironmentName}-BackendTargetGroupArn
 
   BackendAutoScalingTarget:
     Type: AWS::ApplicationAutoScaling::ScalableTarget

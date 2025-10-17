@@ -86,8 +86,9 @@ build-backend:
     - apk add --no-cache python3 py3-pip
     - pip3 install --break-system-packages awscli
     - echo "Verifying AWS credentials..."
-    - aws sts get-caller-identity
-    - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+    - aws sts get-caller-identity || (echo "❌ AWS credentials are invalid" && exit 1)
+    - echo "Logging into ECR..."
+    - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY || (echo "❌ ECR login failed" && exit 1)
   script:
     - cd backend
     - docker build -t $ECR_REGISTRY/$ECR_BACKEND_REPOSITORY:$CI_COMMIT_SHORT_SHA .
@@ -107,8 +108,9 @@ build-frontend:
     - apk add --no-cache python3 py3-pip
     - pip3 install --break-system-packages awscli
     - echo "Verifying AWS credentials..."
-    - aws sts get-caller-identity
-    - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+    - aws sts get-caller-identity || (echo "❌ AWS credentials are invalid" && exit 1)
+    - echo "Logging into ECR..."
+    - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY || (echo "❌ ECR login failed" && exit 1)
   script:
     - cd frontend
     - docker build -t $ECR_REGISTRY/$ECR_FRONTEND_REPOSITORY:$CI_COMMIT_SHORT_SHA .

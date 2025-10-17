@@ -1,0 +1,302 @@
+stages:
+  - lint
+  - test
+  - build
+  - deploy-staging
+  - test-staging
+  - deploy-production
+
+variables:
+  AWS_REGION: us-east-1
+  ECR_REGISTRY: 781177225477.dkr.ecr.us-east-1.amazonaws.com
+  ECR_BACKEND_REPOSITORY: vistora-backend
+  ECR_FRONTEND_REPOSITORY: vistora-frontend
+  ECS_CLUSTER_NAME: production-cluster
+  STAGING_BACKEND_SERVICE: staging-backend-service
+  STAGING_FRONTEND_SERVICE: staging-frontend-service
+  PRODUCTION_BACKEND_SERVICE: production-backend-service
+  PRODUCTION_FRONTEND_SERVICE: production-frontend-service
+
+# Lint Stage
+lint-backend:
+  stage: lint
+  image: node:18-alpine
+  script:
+    - cd backend
+    - npm ci
+    - npm run lint
+  only:
+    - main
+    - merge_requests
+
+lint-frontend:
+  stage: lint
+  image: node:18-alpine
+  script:
+    - cd frontend
+    - npm ci
+    - npm run lint
+  only:
+    - main
+    - merge_requests
+
+# Test Stage
+test-backend:
+  stage: test
+  image: node:18-alpine
+  script:
+    - cd backend
+    - npm ci
+    - npm run test
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: backend/coverage/cobertura-coverage.xml
+  only:
+    - main
+    - merge_requests
+
+test-frontend:
+  stage: test
+  image: node:18-alpine
+  script:
+    - cd frontend
+    - npm ci
+    - npm run test
+  coverage: '/All files[^|]*\|[^|]*\s+([\d\.]+)/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: frontend/coverage/cobertura-coverage.xml
+  only:
+    - main
+    - merge_requests
+
+# Build Stage
+build-backend:
+  stage: build
+  image: docker:24-dind
+  services:
+    - docker:24-dind
+  before_script:
+    - apk add --no-cache python3 py3-pip
+    - pip3 install awscli
+    - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+  script:
+    - cd backend
+    - docker build -t $ECR_REGISTRY/$ECR_BACKEND_REPOSITORY:$CI_COMMIT_SHORT_SHA .
+    - docker tag $ECR_REGISTRY/$ECR_BACKEND_REPOSITORY:$CI_COMMIT_SHORT_SHA $ECR_REGISTRY/$ECR_BACKEND_REPOSITORY:latest
+    - docker push $ECR_REGISTRY/$ECR_BACKEND_REPOSITORY:$CI_COMMIT_SHORT_SHA
+    - docker push $ECR_REGISTRY/$ECR_BACKEND_REPOSITORY:latest
+    - echo "Backend image pushed - $ECR_REGISTRY/$ECR_BACKEND_REPOSITORY:$CI_COMMIT_SHORT_SHA"
+  only:
+    - main
+
+build-frontend:
+  stage: build
+  image: docker:24-dind
+  services:
+    - docker:24-dind
+  before_script:
+    - apk add --no-cache python3 py3-pip
+    - pip3 install awscli
+    - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+  script:
+    - cd frontend
+    - docker build -t $ECR_REGISTRY/$ECR_FRONTEND_REPOSITORY:$CI_COMMIT_SHORT_SHA .
+    - docker tag $ECR_REGISTRY/$ECR_FRONTEND_REPOSITORY:$CI_COMMIT_SHORT_SHA $ECR_REGISTRY/$ECR_FRONTEND_REPOSITORY:latest
+    - docker push $ECR_REGISTRY/$ECR_FRONTEND_REPOSITORY:$CI_COMMIT_SHORT_SHA
+    - docker push $ECR_REGISTRY/$ECR_FRONTEND_REPOSITORY:latest
+    - echo "Frontend image pushed - $ECR_REGISTRY/$ECR_FRONTEND_REPOSITORY:$CI_COMMIT_SHORT_SHA"
+  only:
+    - main
+
+# Deploy to Staging
+deploy-staging-backend:
+  stage: deploy-staging
+  image: amazon/aws-cli:latest
+  script:
+    - |
+      # Get current task definition
+      TASK_DEF=$(aws ecs describe-task-definition \
+        --task-definition staging-backend \
+        --region $AWS_REGION \
+        --query 'taskDefinition' \
+        --output json)
+      
+      # Update image
+      NEW_TASK_DEF=$(echo $TASK_DEF | jq --arg IMAGE "$ECR_REGISTRY/$ECR_BACKEND_REPOSITORY:$CI_COMMIT_SHORT_SHA" \
+        '.containerDefinitions[0].image = $IMAGE | 
+         del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
+      
+      # Register new task definition
+      NEW_REVISION=$(aws ecs register-task-definition \
+        --cli-input-json "$NEW_TASK_DEF" \
+        --region $AWS_REGION \
+        --query 'taskDefinition.revision' \
+        --output text)
+      
+      # Update service
+      aws ecs update-service \
+        --cluster $ECS_CLUSTER_NAME \
+        --service $STAGING_BACKEND_SERVICE \
+        --task-definition staging-backend:$NEW_REVISION \
+        --force-new-deployment \
+        --region $AWS_REGION
+      
+      echo "Staging backend deployed - revision $NEW_REVISION"
+  only:
+    - main
+  when: on_success
+
+deploy-staging-frontend:
+  stage: deploy-staging
+  image: amazon/aws-cli:latest
+  script:
+    - |
+      # Get current task definition
+      TASK_DEF=$(aws ecs describe-task-definition \
+        --task-definition staging-frontend \
+        --region $AWS_REGION \
+        --query 'taskDefinition' \
+        --output json)
+      
+      # Update image
+      NEW_TASK_DEF=$(echo $TASK_DEF | jq --arg IMAGE "$ECR_REGISTRY/$ECR_FRONTEND_REPOSITORY:$CI_COMMIT_SHORT_SHA" \
+        '.containerDefinitions[0].image = $IMAGE | 
+         del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
+      
+      # Register new task definition
+      NEW_REVISION=$(aws ecs register-task-definition \
+        --cli-input-json "$NEW_TASK_DEF" \
+        --region $AWS_REGION \
+        --query 'taskDefinition.revision' \
+        --output text)
+      
+      # Update service
+      aws ecs update-service \
+        --cluster $ECS_CLUSTER_NAME \
+        --service $STAGING_FRONTEND_SERVICE \
+        --task-definition staging-frontend:$NEW_REVISION \
+        --force-new-deployment \
+        --region $AWS_REGION
+      
+      echo "Staging frontend deployed - revision $NEW_REVISION"
+  only:
+    - main
+  when: on_success
+
+# E2E Testing on Staging
+e2e-test-staging:
+  stage: test-staging
+  image: cypress/base:18
+  script:
+    - cd frontend
+    - npm ci
+    - npx cypress run --config baseUrl=http://staging-alb.example.com
+  artifacts:
+    when: always
+    paths:
+      - frontend/cypress/videos
+      - frontend/cypress/screenshots
+    expire_in: 1 week
+  only:
+    - main
+  when: on_success
+  allow_failure: true
+
+# Deploy to Production (Manual)
+deploy-production-backend:
+  stage: deploy-production
+  image: amazon/aws-cli:latest
+  script:
+    - |
+      # Get current task definition
+      TASK_DEF=$(aws ecs describe-task-definition \
+        --task-definition production-backend \
+        --region $AWS_REGION \
+        --query 'taskDefinition' \
+        --output json)
+      
+      # Update image
+      NEW_TASK_DEF=$(echo $TASK_DEF | jq --arg IMAGE "$ECR_REGISTRY/$ECR_BACKEND_REPOSITORY:$CI_COMMIT_SHORT_SHA" \
+        '.containerDefinitions[0].image = $IMAGE | 
+         del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
+      
+      # Register new task definition
+      NEW_REVISION=$(aws ecs register-task-definition \
+        --cli-input-json "$NEW_TASK_DEF" \
+        --region $AWS_REGION \
+        --query 'taskDefinition.revision' \
+        --output text)
+      
+      # Update service with blue-green deployment
+      aws ecs update-service \
+        --cluster $ECS_CLUSTER_NAME \
+        --service $PRODUCTION_BACKEND_SERVICE \
+        --task-definition production-backend:$NEW_REVISION \
+        --force-new-deployment \
+        --region $AWS_REGION
+      
+      # Wait for service to stabilize
+      aws ecs wait services-stable \
+        --cluster $ECS_CLUSTER_NAME \
+        --services $PRODUCTION_BACKEND_SERVICE \
+        --region $AWS_REGION
+      
+      echo "Production backend deployed - revision $NEW_REVISION"
+  only:
+    - main
+  when: manual
+  environment:
+    name: production
+    url: http://production-alb-1858392579.us-east-1.elb.amazonaws.com
+
+deploy-production-frontend:
+  stage: deploy-production
+  image: amazon/aws-cli:latest
+  script:
+    - |
+      # Get current task definition
+      TASK_DEF=$(aws ecs describe-task-definition \
+        --task-definition production-frontend \
+        --region $AWS_REGION \
+        --query 'taskDefinition' \
+        --output json)
+      
+      # Update image
+      NEW_TASK_DEF=$(echo $TASK_DEF | jq --arg IMAGE "$ECR_REGISTRY/$ECR_FRONTEND_REPOSITORY:$CI_COMMIT_SHORT_SHA" \
+        '.containerDefinitions[0].image = $IMAGE | 
+         del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
+      
+      # Register new task definition
+      NEW_REVISION=$(aws ecs register-task-definition \
+        --cli-input-json "$NEW_TASK_DEF" \
+        --region $AWS_REGION \
+        --query 'taskDefinition.revision' \
+        --output text)
+      
+      # Update service with blue-green deployment
+      aws ecs update-service \
+        --cluster $ECS_CLUSTER_NAME \
+        --service $PRODUCTION_FRONTEND_SERVICE \
+        --task-definition production-frontend:$NEW_REVISION \
+        --force-new-deployment \
+        --region $AWS_REGION
+      
+      # Wait for service to stabilize
+      aws ecs wait services-stable \
+        --cluster $ECS_CLUSTER_NAME \
+        --services $PRODUCTION_FRONTEND_SERVICE \
+        --region $AWS_REGION
+      
+      echo "Production frontend deployed - revision $NEW_REVISION"
+  only:
+    - main
+  when: manual
+  environment:
+    name: production
+    url: http://production-alb-1858392579.us-east-1.elb.amazonaws.com

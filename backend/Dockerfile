@@ -20,6 +20,9 @@ RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nodejs:nodejs /app/package*.json ./
+COPY --chown=nodejs:nodejs .sequelizerc ./
+COPY --chown=nodejs:nodejs src/config ./src/config
+COPY --chown=nodejs:nodejs src/migrations ./src/migrations
 
 USER nodejs
 

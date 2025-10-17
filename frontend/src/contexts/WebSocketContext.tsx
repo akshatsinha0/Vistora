@@ -40,7 +40,9 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({
     const token = authService.getToken();
     if (!token) return;
 
-    const WS_URL = import.meta.env.VITE_WS_URL || 'http://localhost:8080';
+    // Use relative URL in production, localhost in development
+    const WS_URL = import.meta.env.VITE_WS_URL || 
+      (import.meta.env.MODE === 'production' ? window.location.origin : 'http://localhost:8080');
 
     const newSocket = io(WS_URL, {
       auth: {

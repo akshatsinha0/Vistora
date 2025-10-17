@@ -177,7 +177,7 @@ deploy-staging-frontend:
 # E2E Testing on Staging
 e2e-test-staging:
   stage: test-staging
-  image: cypress/base:18
+  image: cypress/included:13.6.0
   script:
     - cd frontend
     - npm ci

@@ -163,8 +163,8 @@ export const LoginForm: React.FC = () => {
           <Link
             to="/register"
             style={{
-              color: '#fdab9f',
-              textDecoration: 'none',
+              color: '#2c3e50',
+              textDecoration: 'underline',
               fontWeight: 'bold',
             }}
           >

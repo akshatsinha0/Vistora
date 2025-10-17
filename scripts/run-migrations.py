@@ -58,7 +58,7 @@ task_def = {
     "containerDefinitions": [
         {
             "name": "migration",
-            "image": "781177225477.dkr.ecr.us-east-1.amazonaws.com/vistora-backend:f4a03db",
+            "image": "781177225477.dkr.ecr.us-east-1.amazonaws.com/vistora-backend:74680f8",
             "essential": True,
             "command": ["npm", "run", "migrate"],
             "environment": [

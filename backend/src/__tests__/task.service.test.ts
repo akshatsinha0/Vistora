@@ -1,6 +1,5 @@
 import { TaskService } from '../services/task.service';
 import { Task } from '../models/Task';
-import { User } from '../models/User';
 
 jest.mock('../models/Task');
 jest.mock('../models/User');

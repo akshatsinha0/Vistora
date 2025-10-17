@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { authenticate, requireRole, AuthRequest } from '../middleware/auth';
 import { User } from '../models/User';
 import * as jwtUtils from '../utils/jwt';

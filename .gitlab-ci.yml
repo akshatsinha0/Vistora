@@ -126,14 +126,10 @@ deploy-staging-backend:
   stage: deploy-staging
   image: amazon/aws-cli:latest
   before_script:
-    - yum install -y jq
+    - yum install -y jq -q
   script:
     - echo "Checking if staging task definition exists..."
-    - |
-      if ! aws ecs describe-task-definition --task-definition staging-backend --region $AWS_REGION > /dev/null 2>&1; then
-        echo "⚠️  Staging backend task definition does not exist - skipping deployment"
-        exit 0
-      fi
+    - aws ecs describe-task-definition --task-definition staging-backend --region $AWS_REGION > /dev/null 2>&1 || (echo "⚠️ Staging backend task definition does not exist - skipping" && exit 0)
     - echo "Getting current task definition..."
     - TASK_DEF=$(aws ecs describe-task-definition --task-definition staging-backend --region $AWS_REGION --query 'taskDefinition' --output json)
     - echo "Updating image in task definition..."
@@ -152,14 +148,10 @@ deploy-staging-frontend:
   stage: deploy-staging
   image: amazon/aws-cli:latest
   before_script:
-    - yum install -y jq
+    - yum install -y jq -q
   script:
     - echo "Checking if staging task definition exists..."
-    - |
-      if ! aws ecs describe-task-definition --task-definition staging-frontend --region $AWS_REGION > /dev/null 2>&1; then
-        echo "⚠️  Staging frontend task definition does not exist - skipping deployment"
-        exit 0
-      fi
+    - aws ecs describe-task-definition --task-definition staging-frontend --region $AWS_REGION > /dev/null 2>&1 || (echo "⚠️ Staging frontend task definition does not exist - skipping" && exit 0)
     - echo "Getting current task definition..."
     - TASK_DEF=$(aws ecs describe-task-definition --task-definition staging-frontend --region $AWS_REGION --query 'taskDefinition' --output json)
     - echo "Updating image in task definition..."
@@ -198,14 +190,10 @@ deploy-production-backend:
   stage: deploy-production
   image: amazon/aws-cli:latest
   before_script:
-    - yum install -y jq
+    - yum install -y jq -q
   script:
     - echo "Checking if production task definition exists..."
-    - |
-      if ! aws ecs describe-task-definition --task-definition production-backend --region $AWS_REGION > /dev/null 2>&1; then
-        echo "⚠️  Production backend task definition does not exist - skipping deployment"
-        exit 0
-      fi
+    - aws ecs describe-task-definition --task-definition production-backend --region $AWS_REGION > /dev/null 2>&1 || (echo "⚠️ Production backend task definition does not exist - skipping" && exit 0)
     - echo "Getting current task definition..."
     - TASK_DEF=$(aws ecs describe-task-definition --task-definition production-backend --region $AWS_REGION --query 'taskDefinition' --output json)
     - echo "Updating image in task definition..."
@@ -229,14 +217,10 @@ deploy-production-frontend:
   stage: deploy-production
   image: amazon/aws-cli:latest
   before_script:
-    - yum install -y jq
+    - yum install -y jq -q
   script:
     - echo "Checking if production task definition exists..."
-    - |
-      if ! aws ecs describe-task-definition --task-definition production-frontend --region $AWS_REGION > /dev/null 2>&1; then
-        echo "⚠️  Production frontend task definition does not exist - skipping deployment"
-        exit 0
-      fi
+    - aws ecs describe-task-definition --task-definition production-frontend --region $AWS_REGION > /dev/null 2>&1 || (echo "⚠️ Production frontend task definition does not exist - skipping" && exit 0)
     - echo "Getting current task definition..."
     - TASK_DEF=$(aws ecs describe-task-definition --task-definition production-frontend --region $AWS_REGION --query 'taskDefinition' --output json)
     - echo "Updating image in task definition..."

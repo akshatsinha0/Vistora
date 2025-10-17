@@ -75,11 +75,29 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_FRONTEND_REPOSITORY:latest
           echo "Frontend image pushed: $ECR_REGISTRY/$ECR_FRONTEND_REPOSITORY:$IMAGE_TAG"
 
+      - name: Check if ECS cluster exists
+        id: check-ecs
+        run: |
+          if aws ecs describe-clusters --clusters $ECS_CLUSTER --query 'clusters[0].status' --output text 2>/dev/null | grep -q "ACTIVE"; then
+            echo "ecs_exists=true" >> $GITHUB_OUTPUT
+            echo "✅ ECS cluster exists"
+          else
+            echo "ecs_exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️  ECS cluster does not exist - skipping deployment"
+          fi
+
       - name: Update backend ECS service
+        if: steps.check-ecs.outputs.ecs_exists == 'true'
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ steps.vars.outputs.sha_short }}
         run: |
+          # Check if task definition exists
+          if ! aws ecs describe-task-definition --task-definition production-BackendTask &>/dev/null; then
+            echo "⚠️  Backend task definition does not exist - skipping"
+            exit 0
+          fi
+          
           # Get current task definition
           TASK_DEFINITION=$(aws ecs describe-task-definition \
             --task-definition production-BackendTask \
@@ -102,13 +120,20 @@ jobs:
             --task-definition production-BackendTask:$NEW_REVISION \
             --force-new-deployment
           
-          echo "Backend service updated to revision $NEW_REVISION"
+          echo "✅ Backend service updated to revision $NEW_REVISION"
 
       - name: Update frontend ECS service
+        if: steps.check-ecs.outputs.ecs_exists == 'true'
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ steps.vars.outputs.sha_short }}
         run: |
+          # Check if task definition exists
+          if ! aws ecs describe-task-definition --task-definition production-FrontendTask &>/dev/null; then
+            echo "⚠️  Frontend task definition does not exist - skipping"
+            exit 0
+          fi
+          
           # Get current task definition
           TASK_DEFINITION=$(aws ecs describe-task-definition \
             --task-definition production-FrontendTask \
@@ -131,28 +156,45 @@ jobs:
             --task-definition production-FrontendTask:$NEW_REVISION \
             --force-new-deployment
           
-          echo "Frontend service updated to revision $NEW_REVISION"
+          echo "✅ Frontend service updated to revision $NEW_REVISION"
 
       - name: Wait for services to stabilize
+        if: steps.check-ecs.outputs.ecs_exists == 'true'
         run: |
           echo "Waiting for backend service to stabilize..."
-          aws ecs wait services-stable \
-            --cluster $ECS_CLUSTER \
-            --services $ECS_BACKEND_SERVICE
+          if aws ecs describe-services --cluster $ECS_CLUSTER --services $ECS_BACKEND_SERVICE --query 'services[0].status' --output text 2>/dev/null | grep -q "ACTIVE"; then
+            aws ecs wait services-stable \
+              --cluster $ECS_CLUSTER \
+              --services $ECS_BACKEND_SERVICE
+            echo "✅ Backend service stabilized"
+          else
+            echo "⚠️  Backend service does not exist - skipping"
+          fi
           
           echo "Waiting for frontend service to stabilize..."
-          aws ecs wait services-stable \
-            --cluster $ECS_CLUSTER \
-            --services $ECS_FRONTEND_SERVICE
+          if aws ecs describe-services --cluster $ECS_CLUSTER --services $ECS_FRONTEND_SERVICE --query 'services[0].status' --output text 2>/dev/null | grep -q "ACTIVE"; then
+            aws ecs wait services-stable \
+              --cluster $ECS_CLUSTER \
+              --services $ECS_FRONTEND_SERVICE
+            echo "✅ Frontend service stabilized"
+          else
+            echo "⚠️  Frontend service does not exist - skipping"
+          fi
           
           echo "✅ Deployment completed successfully!"
 
       - name: Deployment summary
         env:
           IMAGE_TAG: ${{ steps.vars.outputs.sha_short }}
+          ECS_EXISTS: ${{ steps.check-ecs.outputs.ecs_exists }}
         run: |
           echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit**: $IMAGE_TAG" >> $GITHUB_STEP_SUMMARY
           echo "- **Backend Image**: $ECR_BACKEND_REPOSITORY:$IMAGE_TAG" >> $GITHUB_STEP_SUMMARY
           echo "- **Frontend Image**: $ECR_FRONTEND_REPOSITORY:$IMAGE_TAG" >> $GITHUB_STEP_SUMMARY
-          echo "- **Status**: ✅ Deployed" >> $GITHUB_STEP_SUMMARY
+          if [ "$ECS_EXISTS" == "true" ]; then
+            echo "- **ECS Deployment**: ✅ Updated" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **ECS Deployment**: ⚠️  Skipped (infrastructure not deployed)" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "- **Status**: ✅ Build completed" >> $GITHUB_STEP_SUMMARY

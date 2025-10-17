@@ -42,7 +42,6 @@ Resources:
   RedisCluster:
     Type: AWS::ElastiCache::CacheCluster
     Properties:
-      CacheClusterId: !Sub ${EnvironmentName}-vistora-redis
       Engine: redis
       EngineVersion: '7.0'
       CacheNodeType: !Ref CacheNodeType

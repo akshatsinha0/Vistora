@@ -79,13 +79,15 @@ jobs:
 
       - name: Check if ECS cluster exists
         id: check-ecs
+        continue-on-error: true
         run: |
-          if aws ecs describe-clusters --clusters $ECS_CLUSTER --query 'clusters[0].status' --output text 2>/dev/null | grep -q "ACTIVE"; then
+          CLUSTER_STATUS=$(aws ecs describe-clusters --clusters $ECS_CLUSTER --query 'clusters[0].status' --output text 2>/dev/null || echo "NOT_FOUND")
+          if [ "$CLUSTER_STATUS" = "ACTIVE" ]; then
             echo "ecs_exists=true" >> $GITHUB_OUTPUT
-            echo "✅ ECS cluster exists"
+            echo "✅ ECS cluster exists and is ACTIVE"
           else
             echo "ecs_exists=false" >> $GITHUB_OUTPUT
-            echo "⚠️  ECS cluster does not exist - skipping deployment"
+            echo "⚠️  ECS cluster does not exist or is not active (status: $CLUSTER_STATUS) - skipping deployment"
           fi
 
       - name: Update backend ECS service
@@ -95,6 +97,12 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ steps.vars.outputs.sha_short }}
         run: |
+          # Check if service exists
+          if ! aws ecs describe-services --cluster $ECS_CLUSTER --services $ECS_BACKEND_SERVICE --query 'services[0].status' --output text 2>/dev/null | grep -q "ACTIVE"; then
+            echo "⚠️  Backend service does not exist or is not active - skipping"
+            exit 0
+          fi
+          
           # Check if task definition exists
           if ! aws ecs describe-task-definition --task-definition production-backend &>/dev/null; then
             echo "⚠️  Backend task definition does not exist - skipping"
@@ -132,6 +140,12 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ steps.vars.outputs.sha_short }}
         run: |
+          # Check if service exists
+          if ! aws ecs describe-services --cluster $ECS_CLUSTER --services $ECS_FRONTEND_SERVICE --query 'services[0].status' --output text 2>/dev/null | grep -q "ACTIVE"; then
+            echo "⚠️  Frontend service does not exist or is not active - skipping"
+            exit 0
+          fi
+          
           # Check if task definition exists
           if ! aws ecs describe-task-definition --task-definition production-frontend &>/dev/null; then
             echo "⚠️  Frontend task definition does not exist - skipping"

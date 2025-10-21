@@ -49,9 +49,11 @@ if ($existingRoles) {
 Write-Host ""
 
 Write-Host "Step 3: Creating CloudFormation stack..." -ForegroundColor Cyan
+Write-Host "Note: Rollback disabled for error inspection" -ForegroundColor Yellow
 $createOutput = aws cloudformation create-stack `
     --stack-name $StackName `
     --template-url $TemplateURL `
+    --disable-rollback `
     --parameters `
         ParameterKey=EnvironmentName,ParameterValue=production `
         ParameterKey=DBPassword,ParameterValue=$DBPassword `

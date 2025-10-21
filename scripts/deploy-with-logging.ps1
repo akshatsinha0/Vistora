@@ -97,10 +97,11 @@ while (-not $stackComplete) {
     }
     
     # Get new events
+    $query = "StackEvents[?Timestamp>'$lastEventTime']"
     $events = aws cloudformation describe-stack-events `
         --stack-name $StackName `
         --region $Region `
-        --query "StackEvents[?Timestamp>'$lastEventTime']" `
+        --query $query `
         --output json 2>$null | ConvertFrom-Json
     
     if ($events) {

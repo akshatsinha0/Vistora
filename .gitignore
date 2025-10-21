@@ -50,3 +50,7 @@ Thumbs.db
 *.temp
 .cache/
 stack-events.json
+
+# Demo files (not for production)
+DEMO_COMMANDS.txt
+DEMO_SCRIPT.txt

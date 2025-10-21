@@ -98,13 +98,15 @@ while (-not $stackComplete) {
         break
     }
     
-    # Get new events
-    $query = "StackEvents[?Timestamp>'$lastEventTime']"
-    $events = aws cloudformation describe-stack-events `
-        --stack-name $StackName `
-        --region $Region `
-        --query $query `
-        --output json 2>$null | ConvertFrom-Json
+    # Get new events (get all and filter in PowerShell to avoid redirect issues)
+    $allEventsJson = aws cloudformation describe-stack-events --stack-name $StackName --region $Region --output json 2>&1
+    
+    if ($LASTEXITCODE -eq 0 -and $allEventsJson) {
+        $allEvents = $allEventsJson | ConvertFrom-Json
+        $events = $allEvents.StackEvents | Where-Object { $_.Timestamp -gt $lastEventTime }
+    } else {
+        $events = $null
+    }
     
     if ($events) {
         # Sort by timestamp (oldest first)

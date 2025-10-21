@@ -29,7 +29,7 @@ aws cloudformation create-stack `
         ParameterKey=BackendImageUri,ParameterValue=$BackendImageUri `
         ParameterKey=FrontendImageUri,ParameterValue=$FrontendImageUri `
         ParameterKey=AlertEmail,ParameterValue=$AlertEmail `
-    --capabilities CAPABILITY_IAM `
+    --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM `
     --tags Key=Project,Value=Vistora `
     --region $Region
 

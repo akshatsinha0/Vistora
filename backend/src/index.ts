@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 dotenv.config();
+// Trigger GitHub Actions workflow
 
 import http from 'http';
 import { Sequelize } from 'sequelize';

@@ -7,8 +7,10 @@ on:
     paths:
       - 'backend/**'
       - 'frontend/**'
-      - 'infrastructure/cloudformation/**'
-      - '.github/workflows/deploy.yml'
+      - 'infrastructure/**'
+      - 'scripts/**'
+      - '.github/workflows/**'
+      - 'docker-compose.yml'
 
 env:
   AWS_REGION: us-east-1

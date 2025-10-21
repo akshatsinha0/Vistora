@@ -34,7 +34,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-Write-Host "✅ Docker images found in ECR" -ForegroundColor Green
+Write-Host "<<----.---->> Docker images found in ECR" -ForegroundColor Green
 Write-Host ""
 
 Write-Host "Step 2: Check if IAM roles exist..." -ForegroundColor Cyan
@@ -44,7 +44,7 @@ if ($existingRoles) {
     Write-Host $existingRoles
     Write-Host "This might cause conflicts. Consider deleting them first." -ForegroundColor Yellow
 } else {
-    Write-Host "✅ No conflicting IAM roles found" -ForegroundColor Green
+    Write-Host "<<----.---->> No conflicting IAM roles found" -ForegroundColor Green
 }
 Write-Host ""
 
@@ -69,7 +69,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-Write-Host "✅ Stack creation initiated" -ForegroundColor Green
+Write-Host "<<----.---->> Stack creation initiated" -ForegroundColor Green
 Write-Host $createOutput
 Write-Host ""
 
@@ -129,7 +129,7 @@ while (-not $stackComplete) {
                 }
                 $errorCount++
             } elseif ($status -eq "CREATE_COMPLETE") {
-                Write-Host "[$timeStr] ✅ $resource" -ForegroundColor Green
+                Write-Host "[$timeStr] <<----.---->> $resource" -ForegroundColor Green
             } elseif ($status -eq "CREATE_IN_PROGRESS") {
                 Write-Host "[$timeStr] ⏳ $resource" -ForegroundColor Cyan
             } elseif ($status -like "*ROLLBACK*") {
@@ -145,7 +145,7 @@ while (-not $stackComplete) {
         $stackComplete = $true
         Write-Host ""
         Write-Host "========================================" -ForegroundColor Green
-        Write-Host "✅ STACK CREATED SUCCESSFULLY!" -ForegroundColor Green
+        Write-Host "<<----.---->> STACK CREATED SUCCESSFULLY!" -ForegroundColor Green
         Write-Host "========================================" -ForegroundColor Green
         Write-Host ""
         

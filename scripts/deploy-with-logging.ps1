@@ -55,11 +55,11 @@ $createOutput = aws cloudformation create-stack `
     --template-url $TemplateURL `
     --disable-rollback `
     --parameters `
-        ParameterKey=EnvironmentName,ParameterValue=production `
-        ParameterKey=DBPassword,ParameterValue=$DBPassword `
-        ParameterKey=BackendImageUri,ParameterValue=$BackendImageUri `
-        ParameterKey=FrontendImageUri,ParameterValue=$FrontendImageUri `
-        ParameterKey=AlertEmail,ParameterValue=$AlertEmail `
+        "ParameterKey=EnvironmentName,ParameterValue=production" `
+        "ParameterKey=DBPassword,ParameterValue=$DBPassword" `
+        "ParameterKey=BackendImageUri,ParameterValue=$BackendImageUri" `
+        "ParameterKey=FrontendImageUri,ParameterValue=$FrontendImageUri" `
+        "ParameterKey=AlertEmail,ParameterValue=$AlertEmail" `
     --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM `
     --tags Key=Project,Value=Vistora `
     --region $Region 2>&1

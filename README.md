@@ -70,21 +70,55 @@ Vistora/
 │   ├── Dockerfile
 │   ├── nginx.conf
 │   └── package.json
-├── infrastructure/          # AWS CloudFormation
-│   └── cloudformation/
-│       ├── main-stack.yaml
-│       ├── network-stack.yaml
-│       ├── security-stack.yaml
-│       ├── database-stack.yaml
-│       ├── cache-stack.yaml
-│       ├── compute-stack.yaml
-│       └── monitoring-stack.yaml
-├── scripts/                 # Deployment scripts
-│   ├── aws-commands.ps1
-│   ├── setup-aws-cli.ps1
-│   └── create-secrets.ps1
+├── infrastructure/          # Infrastructure as Code
+│   ├── cloudformation/     # AWS CloudFormation templates
+│   │   ├── main-stack.yaml
+│   │   ├── network-stack.yaml
+│   │   ├── security-stack.yaml
+│   │   ├── database-stack.yaml
+│   │   ├── cache-stack.yaml
+│   │   ├── compute-stack.yaml
+│   │   └── monitoring-stack.yaml
+│   ├── terraform/          # Terraform configurations
+│   │   ├── modules/
+│   │   │   ├── vpc/       # VPC networking module
+│   │   │   ├── eks/       # EKS cluster module
+│   │   │   ├── rds/       # RDS PostgreSQL module
+│   │   │   └── elasticache/ # ElastiCache Redis module
+│   │   ├── main.tf
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   │   ├── modules.tf
+│   │   ├── terraform.tfvars.example
+│   │   └── README.md
+│   └── kubernetes/         # Kubernetes manifests
+│       ├── namespaces/     # Namespace definitions
+│       ├── secrets/        # Secrets management
+│       ├── configmaps/     # Configuration maps
+│       ├── rbac/           # RBAC policies
+│       ├── storage/        # StorageClass definitions
+│       ├── statefulsets/   # StatefulSets (PostgreSQL, Redis)
+│       ├── deployments/    # Application deployments
+│       ├── services/       # Service definitions
+│       ├── ingress/        # Ingress configuration
+│       ├── hpa/            # HorizontalPodAutoscaler
+│       ├── networkpolicies/ # Network policies
+│       └── README.md
+├── scripts/                 # Deployment and automation scripts
+│   ├── deploy-stack.ps1
+│   ├── deploy-with-logging.ps1
+│   ├── cleanup-stacks.ps1
+│   ├── run-migrations.py
+│   ├── terraform-deploy.sh
+│   ├── k8s-deploy.sh
+│   └── terraform-destroy.sh
+├── .github/
+│   └── workflows/          # GitHub Actions CI/CD
+│       ├── deploy.yml
+│       └── upload-templates.yml
 ├── docker-compose.yml       # Local development
 ├── DEPLOYMENT.md            # Deployment guide
+├── DEPLOYMENT_AUTOMATION.md # Automation documentation
 └── README.md
 ```
 

@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vistora-backend-sa
+  namespace: vistora
+  labels:
+    app: vistora-backend
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/vistora-backend-irsa
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: vistora-backend-role
+  namespace: vistora
+  labels:
+    app: vistora-backend
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: vistora-backend-rolebinding
+  namespace: vistora
+  labels:
+    app: vistora-backend
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: vistora-backend-role
+subjects:
+- kind: ServiceAccount
+  name: vistora-backend-sa
+  namespace: vistora

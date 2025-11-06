@@ -1,0 +1,25 @@
+# AWS Configuration
+aws_region = "us-east-1"
+environment = "production"
+project_name = "vistora"
+
+# Network Configuration
+vpc_cidr = "10.0.0.0/16"
+availability_zones = ["us-east-1a", "us-east-1b"]
+
+# EKS Configuration
+eks_cluster_version = "1.28"
+node_instance_types = ["t3.medium"]
+node_desired_size = 2
+node_min_size = 1
+node_max_size = 4
+
+# Database Configuration
+db_password = "CHANGE_ME_IN_PRODUCTION"
+
+# Container Images
+backend_image_tag = "latest"
+frontend_image_tag = "latest"
+
+# Monitoring
+alert_email = "admin@example.com"

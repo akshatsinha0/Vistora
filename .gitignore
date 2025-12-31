@@ -55,3 +55,6 @@ stack-deployment-*.log
 # Demo files (not for production)
 DEMO_COMMANDS.txt
 DEMO_SCRIPT.txt
+
+# Project documentation (not for git)
+PROJECT_DOCUMENTATION.txt
